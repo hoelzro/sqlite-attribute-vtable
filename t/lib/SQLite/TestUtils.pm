@@ -6,7 +6,7 @@ use parent 'Exporter';
 
 use Test::More;
 
-our @EXPORT = qw(check_deps create_dbh);
+our @EXPORT = qw(check_deps check_schema create_dbh);
 
 sub check_deps {
     my $ok = eval {
@@ -18,6 +18,39 @@ sub check_deps {
         plan skip_all => q{The DBD::SQLite module is required to run this test};
         exit 0;
     }
+}
+
+sub check_schema {
+    my ( $dbh, $table_name, $schema ) = @_;
+
+    $schema = { %$schema }; # shallow copy
+
+    local $Test::Builder::Level = $Test::Builder::Level + 1;
+
+    my $sth = $dbh->prepare(sprintf('PRAGMA table_info(%s)',
+        $dbh->quote($table_name)));
+
+    $sth->execute;
+
+    while(my $row = $sth->fetchrow_hashref) {
+        my $name = $row->{'name'};
+
+        unless(delete $schema->{$name}) {
+            fail;
+            diag "Unknown column '$name' found in database schema";
+            return;
+        }
+    }
+
+    if(%$schema) {
+        my ( $name ) = sort keys %$schema; # sort to make sure the first key
+                                           # is consistent between runs
+
+        fail;
+        diag "Column '$name' missing from schema";
+        return;
+    }
+    pass;
 }
 
 sub create_dbh {
