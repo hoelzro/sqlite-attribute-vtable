@@ -5,7 +5,7 @@ all: attributes.so
 attributes.so: attributes.o
 	gcc -shared -o $@ $^
 
-test:
+test: attributes.so
 	prove t
 
 clean:
