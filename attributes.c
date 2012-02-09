@@ -386,8 +386,9 @@ static int attributes_destroy( sqlite3_vtab *_vtab )
     return return_status;
 }
 
-static int _perform_insert( struct attribute_vtab *vtb, int argc, sqlite3_value **argv, sqlite_int64 *rowid )
+static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value **argv, sqlite_int64 *rowid )
 {
+    
     return SQLITE_OK;
 }
 
