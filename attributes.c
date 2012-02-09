@@ -65,6 +65,7 @@ struct attribute_vtab {
     sqlite3 *db;
     char *database_name;
     char *table_name;
+    sqlite3_stmt *insert_seq_stmt;
 };
 
 static void sql_has_attr( sqlite3_context *ctx, int nargs,
@@ -164,6 +165,11 @@ static char *_build_schema( int argc, const char * const *argv )
     return buffer;
 }
 
+static int _initialize_statements( struct attribute_vtab *vtab )
+{
+    return SQLITE_OK;
+}
+
 static int _init_vtab( sqlite3 *db, void *udp, int argc,
     char const * const *argv, sqlite3_vtab **vtab, char **errMsg,
     int initStmts )
@@ -206,6 +212,15 @@ static int _init_vtab( sqlite3 *db, void *udp, int argc,
     if(status != SQLITE_OK) {
         attributes_disconnect((sqlite3_vtab *) avtab);
         return status;
+    }
+
+    if(initStmts) {
+        status = _initialize_statements( avtab );
+
+        if(status != SQLITE_OK) {
+            attributes_disconnect((sqlite3_vtab *) avtab);
+            return status;
+        }
     }
 
     *vtab = (sqlite3_vtab *) avtab;
@@ -266,6 +281,12 @@ static int attributes_create( sqlite3 *db, void *udp, int argc,
 
     /* XXX index attributes! */
 
+    status = _initialize_statements( (struct attribute_vtab *) *vtab );
+
+    if(status != SQLITE_OK) {
+        goto error_handler;
+    }
+
     goto done;
 
 error_handler:
@@ -283,6 +304,7 @@ static int attributes_disconnect( sqlite3_vtab *_vtab )
 {
     struct attribute_vtab *vtab = (struct attribute_vtab *) _vtab;
 
+    sqlite3_finalize( vtab->insert_seq_stmt );
     sqlite3_free( vtab->database_name );
     sqlite3_free( vtab->table_name );
     sqlite3_free( vtab );
