@@ -180,12 +180,32 @@ static int attributes_destroy( sqlite3_vtab *_vtab )
     return SQLITE_OK;
 }
 
+static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **argv, sqlite_int64 *rowid )
+{
+    struct attribute_vtab *vtab = (struct attribute_vtab *) _vtab;
+
+    if(argc == 1) { /* DELETE */
+        /* argv[0] is the ROWID */
+    } else if(sqlite3_value_type(argv[0]) == SQLITE_NULL) { /* INSERT */
+        if(sqlite3_value_type(argv[1]) == SQLITE_NULL) {
+            /* we provide our own ROWID */
+        } else {
+            /* we need to verify the provided ROWID */
+        }
+    } else { /* UPDATE */
+        sqlite3_int64 row = sqlite3_value_int64( argv[0] );
+    }
+
+    return SQLITE_OK;
+}
+
 static sqlite3_module module_definition = {
     .iVersion    = MODULE_VERSION,
     .xCreate     = attributes_create,
     .xConnect    = attributes_create,
     .xDisconnect = attributes_destroy,
-    .xDestroy    = attributes_destroy
+    .xDestroy    = attributes_destroy,
+    .xUpdate     = attributes_update
 };
 
 int sql_attr_init( sqlite3 *db, char **error,
