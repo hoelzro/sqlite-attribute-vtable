@@ -33,6 +33,21 @@ SQLITE_EXTENSION_INIT1;
 #define SCHEMA_SUFFIX            ")"
 #define DEFAULT_ATTRIBUTE_COLUMN "attributes TEXT"
 
+#define SEQ_SCHEMA_NAME  "\"%w\".\"%w_Sequence\""
+#define ATTR_SCHEMA_NAME "\"%w\".\"%w_Attributes\""
+
+#define SEQ_SCHEMA_TMPL\
+    "CREATE TABLE " SEQ_SCHEMA_NAME " ("\
+    "  seq_id INTEGER NOT NULL PRIMARY KEY "\
+    ")"
+
+#define ATTR_SCHEMA_TMPL\
+    "CREATE TABLE " ATTR_SCHEMA_NAME " ("\
+    "  seq_id     INTEGER NOT NULL REFERENCES \"%w_Sequence\" (seq_id) ON DELETE CASCADE, "\
+    "  attr_name  TEXT    NOT NULL, "\
+    "  attr_value TEXT    NOT NULL "\
+    ")"
+
 #define SCHEMA_PREFIX_SIZE            (sizeof(SCHEMA_PREFIX) - 1)
 #define SCHEMA_SUFFIX_SIZE            (sizeof(SCHEMA_SUFFIX) - 1)
 #define DEFAULT_ATTRIBUTE_COLUMN_SIZE (sizeof(DEFAULT_ATTRIBUTE_COLUMN) - 1)
@@ -177,12 +192,74 @@ static int attributes_connect( sqlite3 *db, void *udp, int argc,
 static int attributes_create( sqlite3 *db, void *udp, int argc,
     char const * const *argv, sqlite3_vtab **vtab, char **errMsg )
 {
+    const char *database_name = argv[1];
+    const char *table_name    = argv[2];
+    char *sql                 = NULL;
+    int has_created_seq_table = 0;
+
     int status = attributes_connect( db, udp, argc, argv, vtab, errMsg );
 
-    if(status == SQLITE_OK) {
-        /* XXX initialize DB objects */
+    if(status != SQLITE_OK) {
+        goto error_handler;
     }
 
+    sql = sqlite3_mprintf( SEQ_SCHEMA_TMPL, database_name,
+        table_name );
+
+    if(! sql) {
+        status = SQLITE_NOMEM;
+        goto error_handler;
+    }
+
+    status = sqlite3_exec( db, sql, NULL, NULL, errMsg );
+
+    if(status != SQLITE_OK) {
+        goto error_handler;
+    }
+
+    has_created_seq_table = 1;
+
+    sqlite3_free( sql );
+
+    sql = sqlite3_mprintf( ATTR_SCHEMA_TMPL, database_name,
+        table_name, table_name );
+
+    if(! sql) {
+        status = SQLITE_NOMEM;
+        goto error_handler;
+    }
+
+    status = sqlite3_exec( db, sql, NULL, NULL, errMsg );
+
+    if(status != SQLITE_OK) {
+        goto error_handler;
+    }
+
+    sqlite3_free( sql );
+
+    /* XXX index attributes! */
+
+    goto done;
+
+error_handler:
+    if(sql) {
+        sqlite3_free( sql );
+    }
+    if(*vtab) {
+        sqlite3_free( *vtab );
+    }
+    if(has_created_seq_table) {
+        sql = sqlite3_mprintf( "DROP TABLE " SEQ_SCHEMA_NAME, database_name,
+            table_name );
+        if(sql) {
+            /* ignore status, because we're cleaning up */
+            sqlite3_exec( db, sql, NULL, NULL, NULL );
+
+            sqlite3_free( sql );
+        }
+    }
+
+done:
     return status;
 }
 
