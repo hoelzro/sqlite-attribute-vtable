@@ -296,9 +296,53 @@ static int attributes_disconnect( sqlite3_vtab *_vtab )
 
 static int attributes_destroy( sqlite3_vtab *_vtab )
 {
-    /* XXX clean up DB objects */
+    char *sql;
+    struct attribute_vtab *vtab;
+    sqlite3 *db;
+    char *database_name;
+    char *table_name;
+    int status;
+    int return_status = SQLITE_OK;
 
-    return attributes_disconnect( _vtab );
+    vtab          = (struct attribute_vtab *) _vtab;
+    db            = vtab->db;
+    database_name = vtab->database_name;
+    table_name    = vtab->table_name;
+
+    sql = sqlite3_mprintf( "DROP TABLE " SEQ_SCHEMA_NAME, database_name,
+        table_name );
+
+    if(! sql ) {
+        return_status = SQLITE_NOMEM;
+    } else {
+        status = sqlite3_exec( db, sql, NULL, NULL, NULL );
+        if(status != SQLITE_OK) {
+            return_status = status;
+        }
+
+        sqlite3_free( sql );
+
+        sql = sqlite3_mprintf( "DROP TABLE " ATTR_SCHEMA_NAME, database_name,
+            table_name );
+
+        if(! sql) {
+            return_status = SQLITE_NOMEM;
+        } else {
+            status = sqlite3_exec( db, sql, NULL, NULL, NULL );
+            if(status != SQLITE_OK) {
+                return_status = status;
+            }
+
+            sqlite3_free( sql );
+        }
+    }
+
+    status = attributes_disconnect( _vtab );
+    if(status != SQLITE_OK) {
+        return_status = status;
+    }
+
+    return return_status;
 }
 
 static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **argv, sqlite_int64 *rowid )
