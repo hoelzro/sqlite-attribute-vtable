@@ -164,7 +164,7 @@ static char *_build_schema( int argc, const char * const *argv )
 static int attributes_connect( sqlite3 *db, void *udp, int argc,
     char const * const *argv, sqlite3_vtab **vtab, char **errMsg )
 {
-    char *schema;
+    char *sql;
     struct attribute_vtab *avtab;
 
     *vtab   = NULL;
@@ -189,8 +189,8 @@ static int attributes_connect( sqlite3 *db, void *udp, int argc,
         return SQLITE_NOMEM;
     }
 
-    schema = _build_schema(argc - 3, argv + 3);
-    if(! schema) {
+    sql = _build_schema(argc - 3, argv + 3);
+    if(! sql) {
         sqlite3_free(avtab->database_name);
         sqlite3_free(avtab->table_name);
         sqlite3_free(avtab);
@@ -198,8 +198,8 @@ static int attributes_connect( sqlite3 *db, void *udp, int argc,
     }
 
     // XXX error checking?
-    sqlite3_declare_vtab( db, schema );
-    sqlite3_free(schema);
+    sqlite3_declare_vtab( db, sql );
+    sqlite3_free(sql);
 
     *vtab = (sqlite3_vtab *) avtab;
 
