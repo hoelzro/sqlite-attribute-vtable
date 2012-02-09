@@ -2,11 +2,14 @@ package SQLite::TestUtils;
 
 use strict;
 use warnings;
+use charnames ':full';
 use parent 'Exporter';
 
 use Test::More;
 
-our @EXPORT = qw(check_deps check_schema create_dbh);
+my $RECORD_SEPARATOR = "\N{INFORMATION SEPARATOR ONE}";
+
+our @EXPORT = qw(check_deps check_schema create_dbh form_attr_string);
 
 sub check_deps {
     my $ok = eval {
@@ -70,6 +73,21 @@ sub create_dbh {
     }
 
     return $dbh;
+}
+
+sub form_attr_string {
+    my @attr_pairs = @_;
+
+    my @pieces;
+
+    for(my $i = 0; $i < @attr_pairs; $i += 2) {
+        my ( $key, $value ) = @attr_pairs[$i, $i + 1];
+
+        push @pieces, $key, $value; # record separator for k-v pairs
+                                    # is the same
+    }
+
+    return join($RECORD_SEPARATOR, @pieces);
 }
 
 1;
