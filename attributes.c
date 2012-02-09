@@ -174,6 +174,7 @@ static int attributes_connect( sqlite3 *db, void *udp, int argc,
     if(! avtab) {
         return SQLITE_NOMEM;
     }
+    memset(avtab, 0, sizeof(struct attribute_vtab));
     avtab->db = db;
 
     avtab->database_name = sqlite3_mprintf( "%s", argv[1] );
