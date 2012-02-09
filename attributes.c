@@ -60,6 +60,8 @@ SQLITE_EXTENSION_INIT1;
 struct attribute_vtab {
     sqlite3_vtab vtab;
     sqlite3 *db;
+    char *database_name;
+    char *table_name;
 };
 
 static void sql_has_attr( sqlite3_context *ctx, int nargs,
@@ -174,8 +176,23 @@ static int attributes_connect( sqlite3 *db, void *udp, int argc,
     }
     avtab->db = db;
 
+    avtab->database_name = sqlite3_mprintf( "%s", argv[1] );
+    if(! avtab->database_name) {
+        sqlite3_free(avtab);
+        return SQLITE_NOMEM;
+    }
+
+    avtab->table_name = sqlite3_mprintf( "%s", argv[2] );
+    if(! avtab->table_name) {
+        sqlite3_free(avtab->database_name);
+        sqlite3_free(avtab);
+        return SQLITE_NOMEM;
+    }
+
     schema = _build_schema(argc - 3, argv + 3);
     if(! schema) {
+        sqlite3_free(avtab->database_name);
+        sqlite3_free(avtab->table_name);
         sqlite3_free(avtab);
         return SQLITE_NOMEM;
     }
@@ -246,7 +263,10 @@ error_handler:
         sqlite3_free( sql );
     }
     if(*vtab) {
-        sqlite3_free( *vtab );
+        struct attribute_vtab *avtab = (struct attribute_vtab *) *vtab;
+        sqlite3_free( avtab->database_name );
+        sqlite3_free( avtab->table_name );
+        sqlite3_free( avtab );
     }
     if(has_created_seq_table) {
         sql = sqlite3_mprintf( "DROP TABLE " SEQ_SCHEMA_NAME, database_name,
@@ -265,7 +285,11 @@ done:
 
 static int attributes_disconnect( sqlite3_vtab *_vtab )
 {
-    sqlite3_free( _vtab );
+    struct attribute_vtab *vtab = (struct attribute_vtab *) _vtab;
+
+    sqlite3_free( vtab->database_name );
+    sqlite3_free( vtab->table_name );
+    sqlite3_free( vtab );
 
     return SQLITE_OK;
 }
