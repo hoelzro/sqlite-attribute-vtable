@@ -58,6 +58,7 @@ SQLITE_EXTENSION_INIT1;
     fprintf(stderr, "# " fmt "\n", ##args);
 
 static int attributes_disconnect( sqlite3_vtab * );
+static int attributes_destroy( sqlite3_vtab * );
 
 struct attribute_vtab {
     sqlite3_vtab vtab;
@@ -217,7 +218,6 @@ static int attributes_create( sqlite3 *db, void *udp, int argc,
     const char *database_name = argv[1];
     const char *table_name    = argv[2];
     char *sql                 = NULL;
-    int has_created_seq_table = 0;
 
     int status = attributes_connect( db, udp, argc, argv, vtab, errMsg );
 
@@ -238,8 +238,6 @@ static int attributes_create( sqlite3 *db, void *udp, int argc,
     if(status != SQLITE_OK) {
         goto error_handler;
     }
-
-    has_created_seq_table = 1;
 
     sqlite3_free( sql );
 
@@ -268,22 +266,8 @@ error_handler:
         sqlite3_free( sql );
     }
     if(*vtab) {
-        struct attribute_vtab *avtab = (struct attribute_vtab *) *vtab;
-        sqlite3_free( avtab->database_name );
-        sqlite3_free( avtab->table_name );
-        sqlite3_free( avtab );
+        attributes_destroy( *vtab );
     }
-    if(has_created_seq_table) {
-        sql = sqlite3_mprintf( "DROP TABLE " SEQ_SCHEMA_NAME, database_name,
-            table_name );
-        if(sql) {
-            /* ignore status, because we're cleaning up */
-            sqlite3_exec( db, sql, NULL, NULL, NULL );
-
-            sqlite3_free( sql );
-        }
-    }
-
 done:
     return status;
 }
