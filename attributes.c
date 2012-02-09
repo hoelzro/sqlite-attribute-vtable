@@ -164,8 +164,9 @@ static char *_build_schema( int argc, const char * const *argv )
     return buffer;
 }
 
-static int attributes_connect( sqlite3 *db, void *udp, int argc,
-    char const * const *argv, sqlite3_vtab **vtab, char **errMsg )
+static int _init_vtab( sqlite3 *db, void *udp, int argc,
+    char const * const *argv, sqlite3_vtab **vtab, char **errMsg,
+    int initStmts )
 {
     char *sql;
     struct attribute_vtab *avtab;
@@ -212,6 +213,12 @@ static int attributes_connect( sqlite3 *db, void *udp, int argc,
     return SQLITE_OK;
 }
 
+static int attributes_connect( sqlite3 *db, void *udp, int argc,
+    char const * const *argv, sqlite3_vtab **vtab, char **errMsg )
+{
+    return _init_vtab( db, udp, argc, argv, vtab, errMsg, 1 );
+}
+
 static int attributes_create( sqlite3 *db, void *udp, int argc,
     char const * const *argv, sqlite3_vtab **vtab, char **errMsg )
 {
@@ -219,7 +226,7 @@ static int attributes_create( sqlite3 *db, void *udp, int argc,
     const char *table_name    = argv[2];
     char *sql                 = NULL;
 
-    int status = attributes_connect( db, udp, argc, argv, vtab, errMsg );
+    int status = _init_vtab( db, udp, argc, argv, vtab, errMsg, 0 );
 
     if(status != SQLITE_OK) {
         goto error_handler;
