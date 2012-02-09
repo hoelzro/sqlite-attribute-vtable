@@ -350,18 +350,18 @@ static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **arg
     struct attribute_vtab *vtab = (struct attribute_vtab *) _vtab;
 
     if(argc == 1) { /* DELETE */
-        /* argv[0] is the ROWID */
+        _vtab->zErrMsg = sqlite3_mprintf( "%s", "deleting from the table is forbidden" );
     } else if(sqlite3_value_type(argv[0]) == SQLITE_NULL) { /* INSERT */
         if(sqlite3_value_type(argv[1]) == SQLITE_NULL) {
             /* we provide our own ROWID */
         } else {
-            /* we need to verify the provided ROWID */
+            _vtab->zErrMsg = sqlite3_mprintf( "%s", "providing your own ROWID is forbidden" );
         }
     } else { /* UPDATE */
-        sqlite3_int64 row = sqlite3_value_int64( argv[0] );
+        _vtab->zErrMsg = sqlite3_mprintf( "%s", "updating the table is forbidden" );
     }
 
-    return SQLITE_OK;
+    return SQLITE_ERROR;
 }
 
 static sqlite3_module module_definition = {
