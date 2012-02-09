@@ -57,6 +57,8 @@ SQLITE_EXTENSION_INIT1;
 #define diag(fmt, args...)\
     fprintf(stderr, "# " fmt "\n", ##args);
 
+static int attributes_disconnect( sqlite3_vtab * );
+
 struct attribute_vtab {
     sqlite3_vtab vtab;
     sqlite3 *db;
@@ -166,6 +168,7 @@ static int attributes_connect( sqlite3 *db, void *udp, int argc,
 {
     char *sql;
     struct attribute_vtab *avtab;
+    int status;
 
     *vtab   = NULL;
     *errMsg = NULL;
@@ -198,9 +201,13 @@ static int attributes_connect( sqlite3 *db, void *udp, int argc,
         return SQLITE_NOMEM;
     }
 
-    // XXX error checking?
-    sqlite3_declare_vtab( db, sql );
+    status = sqlite3_declare_vtab( db, sql );
     sqlite3_free(sql);
+
+    if(status != SQLITE_OK) {
+        attributes_disconnect((sqlite3_vtab *) avtab);
+        return status;
+    }
 
     *vtab = (sqlite3_vtab *) avtab;
 
