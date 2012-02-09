@@ -182,22 +182,19 @@ static int attributes_connect( sqlite3 *db, void *udp, int argc,
 
     avtab->database_name = sqlite3_mprintf( "%s", argv[1] );
     if(! avtab->database_name) {
-        sqlite3_free(avtab);
+        attributes_disconnect((sqlite3_vtab *) avtab);
         return SQLITE_NOMEM;
     }
 
     avtab->table_name = sqlite3_mprintf( "%s", argv[2] );
     if(! avtab->table_name) {
-        sqlite3_free(avtab->database_name);
-        sqlite3_free(avtab);
+        attributes_disconnect((sqlite3_vtab *) avtab);
         return SQLITE_NOMEM;
     }
 
     sql = _build_schema(argc - 3, argv + 3);
     if(! sql) {
-        sqlite3_free(avtab->database_name);
-        sqlite3_free(avtab->table_name);
-        sqlite3_free(avtab);
+        attributes_disconnect((sqlite3_vtab *) avtab);
         return SQLITE_NOMEM;
     }
 
