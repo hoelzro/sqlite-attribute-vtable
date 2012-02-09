@@ -7,7 +7,17 @@ use SQLite::TestUtils;
 
 check_deps;
 
-plan tests => 9;
+plan tests => 12;
+
+sub check_tables {
+    my ( $dbh ) = @_;
+
+    local $Test::Builder::Level = $Test::Builder::Level + 1;
+
+    my @tables = $dbh->tables(undef, undef, '%', 'TABLE');
+
+    is_deeply \@tables, [];
+}
 
 my $ok;
 my $dbh = create_dbh;
@@ -38,6 +48,8 @@ END_SQL
 
     ok($ok, 'dropping an attribute table should succeed')
         or diag($dbh->errstr);
+
+    check_tables $dbh;
 }
 
 ONE_EXTRA_COL: {
@@ -67,6 +79,8 @@ END_SQL
 
     ok($ok, 'dropping an attribute table should succeed')
         or diag($dbh->errstr);
+
+    check_tables $dbh;
 }
 
 RENAMED_ATTR_COL: {
@@ -95,6 +109,8 @@ END_SQL
 
     ok($ok, 'dropping an attribute table should succeed')
         or diag($dbh->errstr);
+
+    check_tables $dbh;
 }
 
 $dbh->disconnect;
