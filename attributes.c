@@ -345,6 +345,11 @@ static int attributes_destroy( sqlite3_vtab *_vtab )
     return return_status;
 }
 
+static int _perform_insert( struct attribute_vtab *vtb, int argc, sqlite3_value **argv, sqlite_int64 *rowid )
+{
+    return SQLITE_OK;
+}
+
 static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **argv, sqlite_int64 *rowid )
 {
     struct attribute_vtab *vtab = (struct attribute_vtab *) _vtab;
@@ -353,7 +358,7 @@ static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **arg
         _vtab->zErrMsg = sqlite3_mprintf( "%s", "deleting from the table is forbidden" );
     } else if(sqlite3_value_type(argv[0]) == SQLITE_NULL) { /* INSERT */
         if(sqlite3_value_type(argv[1]) == SQLITE_NULL) {
-            /* we provide our own ROWID */
+            return _perform_insert( vtab, argc, argv, rowid );
         } else {
             _vtab->zErrMsg = sqlite3_mprintf( "%s", "providing your own ROWID is forbidden" );
         }
