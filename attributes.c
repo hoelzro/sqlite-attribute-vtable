@@ -48,6 +48,9 @@ SQLITE_EXTENSION_INIT1;
     "  attr_value TEXT    NOT NULL "\
     ")"
 
+#define INSERT_SEQ_TMPL\
+    "INSERT INTO " SEQ_SCHEMA_NAME " DEFAULT VALUES"
+
 #define SCHEMA_PREFIX_SIZE            (sizeof(SCHEMA_PREFIX) - 1)
 #define SCHEMA_SUFFIX_SIZE            (sizeof(SCHEMA_SUFFIX) - 1)
 #define DEFAULT_ATTRIBUTE_COLUMN_SIZE (sizeof(DEFAULT_ATTRIBUTE_COLUMN) - 1)
@@ -167,6 +170,26 @@ static char *_build_schema( int argc, const char * const *argv )
 
 static int _initialize_statements( struct attribute_vtab *vtab )
 {
+    char *sql;
+    int status;
+
+    sql = sqlite3_mprintf( INSERT_SEQ_TMPL, vtab->database_name,
+        vtab->table_name );
+
+    if(! sql) {
+        /* our caller handles the mess */
+        return SQLITE_NOMEM;
+    }
+
+    status = sqlite3_prepare_v2( vtab->db, sql, -1, &(vtab->insert_seq_stmt), NULL );
+
+    sqlite3_free( sql );
+
+    if(status != SQLITE_OK) {
+        /* our caller handles the mess */
+        return status;
+    }
+
     return SQLITE_OK;
 }
 
