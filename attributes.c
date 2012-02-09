@@ -144,7 +144,7 @@ static char *_build_schema( int argc, const char * const *argv )
     return buffer;
 }
 
-static int attributes_create( sqlite3 *db, void *udp, int argc,
+static int attributes_connect( sqlite3 *db, void *udp, int argc,
     char const * const *argv, sqlite3_vtab **vtab, char **errMsg )
 {
     char *schema;
@@ -174,10 +174,30 @@ static int attributes_create( sqlite3 *db, void *udp, int argc,
     return SQLITE_OK;
 }
 
+static int attributes_create( sqlite3 *db, void *udp, int argc,
+    char const * const *argv, sqlite3_vtab **vtab, char **errMsg )
+{
+    int status = attributes_connect( db, udp, argc, argv, vtab, errMsg );
+
+    if(status == SQLITE_OK) {
+        /* XXX initialize DB objects */
+    }
+
+    return status;
+}
+
+static int attributes_disconnect( sqlite3_vtab *_vtab )
+{
+    sqlite3_free( _vtab );
+
+    return SQLITE_OK;
+}
+
 static int attributes_destroy( sqlite3_vtab *_vtab )
 {
-    sqlite3_free(_vtab);
-    return SQLITE_OK;
+    /* XXX clean up DB objects */
+
+    return attributes_disconnect( _vtab );
 }
 
 static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **argv, sqlite_int64 *rowid )
@@ -202,8 +222,8 @@ static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **arg
 static sqlite3_module module_definition = {
     .iVersion    = MODULE_VERSION,
     .xCreate     = attributes_create,
-    .xConnect    = attributes_create,
-    .xDisconnect = attributes_destroy,
+    .xConnect    = attributes_connect,
+    .xDisconnect = attributes_disconnect,
     .xDestroy    = attributes_destroy,
     .xUpdate     = attributes_update
 };
