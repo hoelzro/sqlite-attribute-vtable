@@ -29,6 +29,9 @@ SQLITE_EXTENSION_INIT1;
 #define MODULE_NAME "attributes"
 #define MODULE_VERSION 1
 
+#define RECORD_SEPARATOR     '\x1f'
+#define RECORD_SEPARATOR_STR "\x1f"
+
 #define SCHEMA_PREFIX            "CREATE TABLE t ("
 #define SCHEMA_SUFFIX            ")"
 #define DEFAULT_ATTRIBUTE_COLUMN "attributes TEXT"
@@ -54,11 +57,14 @@ SQLITE_EXTENSION_INIT1;
 #define INSERT_ATTR_TMPL\
     "INSERT INTO " ATTR_SCHEMA_NAME " VALUES ( ?, ?, ? )"
 
+#define SELECT_CURS_TMPL\
+    "SELECT seq_id, group_concat(attr_name || '" RECORD_SEPARATOR_STR\
+    "' || attr_value, '" RECORD_SEPARATOR_STR "') FROM " ATTR_SCHEMA_NAME\
+    " GROUP BY seq_id"
+
 #define SCHEMA_PREFIX_SIZE            (sizeof(SCHEMA_PREFIX) - 1)
 #define SCHEMA_SUFFIX_SIZE            (sizeof(SCHEMA_SUFFIX) - 1)
 #define DEFAULT_ATTRIBUTE_COLUMN_SIZE (sizeof(DEFAULT_ATTRIBUTE_COLUMN) - 1)
-
-#define RECORD_SEPARATOR '\x1f'
 
 #define ATTR_SEQ_COL 1
 #define ATTR_KEY_COL 2
@@ -79,6 +85,11 @@ struct attribute_vtab {
     char *table_name;
     sqlite3_stmt *insert_seq_stmt;
     sqlite3_stmt *insert_attr_stmt;
+};
+
+struct attribute_cursor {
+    sqlite3_vtab_cursor cursor;
+    sqlite3_stmt *stmt;
 };
 
 static void sql_has_attr( sqlite3_context *ctx, int nargs,
@@ -495,12 +506,45 @@ static int attributes_rename( sqlite3_vtab *_vtab, const char *new_name )
 
 static int attributes_open_cursor( sqlite3_vtab *_vtab, sqlite3_vtab_cursor **cursor )
 {
-    return SQLITE_ERROR;
+    struct attribute_vtab *vtab = (struct attribute_vtab *) _vtab;
+    struct attribute_cursor *c  = NULL;
+    int status;
+    char *sql;
+
+    *cursor = NULL;
+
+    c = sqlite3_malloc( sizeof(struct attribute_cursor) );
+    if(! c) {
+        return SQLITE_NOMEM;
+    }
+
+    sql = sqlite3_mprintf( SELECT_CURS_TMPL, vtab->database_name, vtab->table_name );
+
+    if(! sql) {
+        sqlite3_free( c );
+        return SQLITE_NOMEM;
+    }
+
+    status = sqlite3_prepare_v2( vtab->db, sql, -1, &(c->stmt), NULL );
+    sqlite3_free( sql );
+
+    if(status != SQLITE_OK) {
+        sqlite3_free( c );
+        return status;
+    }
+
+    *cursor = (sqlite3_vtab_cursor *) c;
+    return SQLITE_OK;
 }
 
 static int attributes_close_curor( sqlite3_vtab_cursor *_cursor )
 {
-    return SQLITE_ERROR;
+    struct attribute_cursor *c = (struct attribute_cursor *) _cursor;
+
+    sqlite3_finalize( c->stmt );
+    sqlite3_free( c );
+
+    return SQLITE_OK;
 }
 
 static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
