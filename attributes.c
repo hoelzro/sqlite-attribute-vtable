@@ -58,6 +58,12 @@ SQLITE_EXTENSION_INIT1;
 #define SCHEMA_SUFFIX_SIZE            (sizeof(SCHEMA_SUFFIX) - 1)
 #define DEFAULT_ATTRIBUTE_COLUMN_SIZE (sizeof(DEFAULT_ATTRIBUTE_COLUMN) - 1)
 
+#define RECORD_SEPARATOR '\x1f'
+
+#define ATTR_SEQ_COL 1
+#define ATTR_KEY_COL 2
+#define ATTR_VAL_COL 3
+
 #include <stdio.h>
 
 #define diag(fmt, args...)\
@@ -407,7 +413,55 @@ static int attributes_destroy( sqlite3_vtab *_vtab )
 
 static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value **argv, sqlite_int64 *rowid )
 {
-    
+    int status;
+    const char *attributes;
+    const char *key_endp;
+
+    status = sqlite3_step( vtab->insert_seq_stmt );
+
+    if(status != SQLITE_DONE) {
+        sqlite3_reset( vtab->insert_seq_stmt );
+        return SQLITE_ERROR;
+    }
+    *rowid = sqlite3_last_insert_rowid( vtab->db );
+    sqlite3_reset( vtab->insert_seq_stmt );
+
+    attributes = sqlite3_value_text( argv[2] );
+    while(key_endp = strchr( attributes, RECORD_SEPARATOR )) {
+        const char *key;
+        const char *value;
+        const char *value_endp;
+        size_t key_length;
+        size_t value_length;
+
+        value_endp = strchr( key_endp + 1, RECORD_SEPARATOR );
+
+        if(! value_endp) {
+            value_endp = key_endp + strlen(key_endp);
+        }
+
+        key          = attributes;
+        key_length   = key_endp - key;
+        value        = key_endp + 1;
+        value_length = value_endp - value;
+
+        sqlite3_bind_int64( vtab->insert_attr_stmt, ATTR_SEQ_COL, *rowid );
+        sqlite3_bind_text(  vtab->insert_attr_stmt, ATTR_KEY_COL, key,   key_length,   SQLITE_TRANSIENT );
+        sqlite3_bind_text(  vtab->insert_attr_stmt, ATTR_VAL_COL, value, value_length, SQLITE_TRANSIENT );
+
+        status = sqlite3_step( vtab->insert_attr_stmt );
+        sqlite3_reset( vtab->insert_attr_stmt );
+        if(status != SQLITE_DONE) {
+            return status;
+        }
+
+        if(*value_endp == RECORD_SEPARATOR) {
+            attributes = value_endp + 1;
+        } else {
+            break;
+        }
+    }
+
     return SQLITE_OK;
 }
 
