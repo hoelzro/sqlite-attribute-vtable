@@ -509,6 +509,16 @@ static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
     return SQLITE_ERROR;
 }
 
+static int attributes_next( sqlite3_vtab_cursor *_cursor )
+{
+    return SQLITE_ERROR;
+}
+
+static int attributes_eof( sqlite3_vtab_cursor *_cursor )
+{
+    return 1;
+}
+
 static sqlite3_module module_definition = {
     .iVersion    = MODULE_VERSION,
     .xCreate     = attributes_create,
@@ -520,7 +530,9 @@ static sqlite3_module module_definition = {
     .xRename     = attributes_rename,
     .xOpen       = attributes_open_cursor,
     .xClose      = attributes_close_curor,
-    .xFilter     = attributes_filter
+    .xFilter     = attributes_filter,
+    .xNext       = attributes_next,
+    .xEof        = attributes_eof
 };
 
 int sql_attr_init( sqlite3 *db, char **error,
