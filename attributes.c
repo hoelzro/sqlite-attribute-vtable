@@ -482,13 +482,20 @@ static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **arg
     return SQLITE_ERROR;
 }
 
+static int attributes_best_index( sqlite3_vtab *_vtab, sqlite3_index_info *index_info )
+{
+    return SQLITE_OK;
+}
+
 static sqlite3_module module_definition = {
     .iVersion    = MODULE_VERSION,
     .xCreate     = attributes_create,
     .xConnect    = attributes_connect,
     .xDisconnect = attributes_disconnect,
     .xDestroy    = attributes_destroy,
-    .xUpdate     = attributes_update
+    .xUpdate     = attributes_update,
+    .xBestIndex  = attributes_best_index
+
 };
 
 int sql_attr_init( sqlite3 *db, char **error,
