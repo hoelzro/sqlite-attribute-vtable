@@ -8,8 +8,10 @@ use parent 'Exporter';
 use Test::More;
 
 my $RECORD_SEPARATOR = "\N{INFORMATION SEPARATOR ONE}";
+my $SQLITE_TABLE     = qr/^"(\w+)"\."(\w+)"$/;
 
-our @EXPORT = qw(check_deps check_schema create_dbh form_attr_string);
+our @EXPORT = qw(check_deps check_schema create_dbh form_attr_string
+                 dump_tables);
 
 sub check_deps {
     my $ok = eval {
@@ -88,6 +90,73 @@ sub form_attr_string {
     }
 
     return join($RECORD_SEPARATOR, @pieces);
+}
+
+sub dump_table {
+    my ( $dbh, $table_name ) = @_;
+
+    my $sth = $dbh->prepare("SELECT * FROM $table_name");
+    $sth->execute;
+
+    my $rows = $sth->fetchall_arrayref;
+
+    my @max_lengths = map { length() } @{ $sth->{'NAME'} };
+
+    foreach my $row (@$rows) {
+        @$row = map {
+            defined() ? $_ : 'NULL'
+        } @$row;
+
+        foreach my $index (1 .. $#$row) {
+            if(length($row->[$index]) > $max_lengths[$index]) {
+                $max_lengths[$index] = length($row->[$index]);
+            }
+        }
+    }
+
+    my $format = join(' | ', map { '%' . $_ . 's' } @max_lengths) . "\n";
+
+    diag(sprintf($format, @{ $sth->{'NAME'} }));
+    foreach my $row (@$rows) {
+        diag(sprintf($format, @$row));
+    }
+}
+
+sub _is_virtual_table {
+    my ( $dbh, $table_name ) = @_;
+
+    my $database_name;
+
+    ( $database_name, $table_name ) = $table_name =~ $SQLITE_TABLE;
+
+    my $sth = $dbh->prepare(<<"END_SQL");
+SELECT sql FROM $database_name.SQLITE_MASTER
+WHERE type = 'table'
+AND   name = ?
+END_SQL
+
+    $sth->execute($table_name);
+
+    my ( $sql ) = $sth->fetchrow_array;
+
+    return $sql =~ /create virtual table/i;
+}
+
+sub dump_tables {
+    my ( $dbh ) = @_;
+
+    my @tables = $dbh->tables(undef, undef, '%', 'TABLE');
+
+    foreach my $table (@tables) {
+        next if _is_virtual_table($dbh, $table);
+
+        diag('');
+        diag($table);
+        diag('*' x length($table));
+        diag('');
+
+        dump_table $dbh, $table;
+    }
 }
 
 1;
