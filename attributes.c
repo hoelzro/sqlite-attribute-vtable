@@ -493,6 +493,16 @@ static int attributes_rename( sqlite3_vtab *_vtab, const char *new_name )
     return SQLITE_ERROR;
 }
 
+static int attributes_open_cursor( sqlite3_vtab *_vtab, sqlite3_vtab_cursor **cursor )
+{
+    return SQLITE_ERROR;
+}
+
+static int attributes_close_curor( sqlite3_vtab_cursor *_cursor )
+{
+    return SQLITE_ERROR;
+}
+
 static sqlite3_module module_definition = {
     .iVersion    = MODULE_VERSION,
     .xCreate     = attributes_create,
@@ -501,8 +511,9 @@ static sqlite3_module module_definition = {
     .xDestroy    = attributes_destroy,
     .xUpdate     = attributes_update,
     .xBestIndex  = attributes_best_index,
-    .xRename     = attributes_rename
-
+    .xRename     = attributes_rename,
+    .xOpen       = attributes_open_cursor,
+    .xClose      = attributes_close_curor
 };
 
 int sql_attr_init( sqlite3 *db, char **error,
