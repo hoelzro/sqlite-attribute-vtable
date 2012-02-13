@@ -70,6 +70,8 @@ SQLITE_EXTENSION_INIT1;
 #define ATTR_KEY_COL 2
 #define ATTR_VAL_COL 3
 
+#define CURS_SEQ_COL 0
+
 #define UNIMPLD(vtab)\
     __unimplemented(vtab, __FUNCTION__)
 
@@ -93,6 +95,7 @@ struct attribute_vtab {
 struct attribute_cursor {
     sqlite3_vtab_cursor cursor;
     sqlite3_stmt *stmt;
+    int eof;
 };
 
 static int __unimplemented(struct attribute_vtab *vtab, const char *func_name)
@@ -556,35 +559,72 @@ static int attributes_close_curor( sqlite3_vtab_cursor *_cursor )
     return SQLITE_OK;
 }
 
+static int attributes_get_row( struct attribute_cursor *cursor )
+{
+    int status;
+
+    if(cursor->eof) {
+        return SQLITE_OK;
+    }
+
+    status = sqlite3_step( cursor->stmt );
+
+    if(status == SQLITE_ROW) {
+        return SQLITE_OK;
+    }
+
+    sqlite3_reset( cursor->stmt );
+    cursor->eof = 1;
+
+    return ( status == SQLITE_DONE ? SQLITE_OK : status );
+}
+
 static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
     const char *idx_name, int argc, sqlite3_value **argv )
 {
     struct attribute_vtab *vtab = (struct attribute_vtab *) _cursor->pVtab;
-    return UNIMPLD(vtab);
+    struct attribute_cursor *c  = (struct attribute_cursor *) _cursor;
+    int status;
+
+    status = sqlite3_reset( c->stmt );
+
+    if(status != SQLITE_OK) {
+        return status;
+    }
+    c->eof = 0;
+
+    return attributes_get_row( c );
 }
 
 static int attributes_next( sqlite3_vtab_cursor *_cursor )
 {
-    struct attribute_vtab *vtab = (struct attribute_vtab *) _cursor->pVtab;
-    return UNIMPLD(vtab);
+    return attributes_get_row( (struct attribute_cursor *) _cursor );
 }
 
 static int attributes_eof( sqlite3_vtab_cursor *_cursor )
 {
-    return 1;
+    struct attribute_cursor *c = (struct attribute_cursor *) _cursor;
+
+    return c->eof;
 }
 
 static int attributes_row_id( sqlite3_vtab_cursor *_cursor, sqlite_int64 *rowid )
 {
-    struct attribute_vtab *vtab = (struct attribute_vtab *) _cursor->pVtab;
-    return UNIMPLD(vtab);
+    struct attribute_cursor *c = (struct attribute_cursor *) _cursor;
+
+    *rowid = sqlite3_column_int64( c->stmt, CURS_SEQ_COL );
+
+    return SQLITE_OK;
 }
 
 static int attributes_column( sqlite3_vtab_cursor *_cursor, sqlite3_context *ctx,
     int col_index )
 {
-    struct attribute_vtab *vtab = (struct attribute_vtab *) _cursor->pVtab;
-    return UNIMPLD(vtab);
+    struct attribute_cursor *cursor = (struct attribute_cursor *) _cursor;
+
+    sqlite3_result_value( ctx, sqlite3_column_value( cursor->stmt, col_index ) );
+
+    return SQLITE_OK;
 }
 
 static sqlite3_module module_definition = {
