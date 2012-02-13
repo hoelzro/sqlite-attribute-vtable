@@ -487,6 +487,12 @@ static int attributes_best_index( sqlite3_vtab *_vtab, sqlite3_index_info *index
     return SQLITE_OK;
 }
 
+static int attributes_rename( sqlite3_vtab *_vtab, const char *new_name )
+{
+    _vtab->zErrMsg = sqlite3_mprintf( "%s", "renaming not implemented" );
+    return SQLITE_ERROR;
+}
+
 static sqlite3_module module_definition = {
     .iVersion    = MODULE_VERSION,
     .xCreate     = attributes_create,
@@ -494,7 +500,8 @@ static sqlite3_module module_definition = {
     .xDisconnect = attributes_disconnect,
     .xDestroy    = attributes_destroy,
     .xUpdate     = attributes_update,
-    .xBestIndex  = attributes_best_index
+    .xBestIndex  = attributes_best_index,
+    .xRename     = attributes_rename
 
 };
 
