@@ -519,6 +519,17 @@ static int attributes_eof( sqlite3_vtab_cursor *_cursor )
     return 1;
 }
 
+static int attributes_row_id( sqlite3_vtab_cursor *_cursor, sqlite_int64 *rowid )
+{
+    return SQLITE_ERROR;
+}
+
+static int attributes_column( sqlite3_vtab_cursor *_cursor, sqlite3_context *ctx,
+    int col_index )
+{
+    return SQLITE_ERROR;
+}
+
 static sqlite3_module module_definition = {
     .iVersion    = MODULE_VERSION,
     .xCreate     = attributes_create,
@@ -532,7 +543,9 @@ static sqlite3_module module_definition = {
     .xClose      = attributes_close_curor,
     .xFilter     = attributes_filter,
     .xNext       = attributes_next,
-    .xEof        = attributes_eof
+    .xEof        = attributes_eof,
+    .xRowid      = attributes_row_id,
+    .xColumn     = attributes_column
 };
 
 int sql_attr_init( sqlite3 *db, char **error,
