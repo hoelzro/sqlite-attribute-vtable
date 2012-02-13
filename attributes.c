@@ -70,6 +70,9 @@ SQLITE_EXTENSION_INIT1;
 #define ATTR_KEY_COL 2
 #define ATTR_VAL_COL 3
 
+#define UNIMPLD(vtab)\
+    __unimplemented(vtab, __FUNCTION__)
+
 #include <stdio.h>
 
 #define diag(fmt, args...)\
@@ -91,6 +94,12 @@ struct attribute_cursor {
     sqlite3_vtab_cursor cursor;
     sqlite3_stmt *stmt;
 };
+
+static int __unimplemented(struct attribute_vtab *vtab, const char *func_name)
+{
+    vtab->vtab.zErrMsg = sqlite3_mprintf("function '%s' is not yet implemented", func_name);
+    return SQLITE_ERROR;
+}
 
 static void sql_has_attr( sqlite3_context *ctx, int nargs,
     sqlite3_value **values )
