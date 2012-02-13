@@ -58,7 +58,7 @@ SQLITE_EXTENSION_INIT1;
     "INSERT INTO " ATTR_SCHEMA_NAME " VALUES ( ?, ?, ? )"
 
 #define SELECT_CURS_TMPL\
-    "SELECT seq_id, group_concat(attr_name || '" RECORD_SEPARATOR_STR\
+    "SELECT group_concat(attr_name || '" RECORD_SEPARATOR_STR\
     "' || attr_value, '" RECORD_SEPARATOR_STR "') FROM " ATTR_SCHEMA_NAME\
     " GROUP BY seq_id"
 
