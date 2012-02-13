@@ -302,6 +302,8 @@ static int attributes_create( sqlite3 *db, void *udp, int argc,
 
     sqlite3_free( sql );
 
+    sql = NULL;
+
     /* XXX index attributes! */
 
     status = _initialize_statements( (struct attribute_vtab *) *vtab );
