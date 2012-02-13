@@ -51,6 +51,9 @@ SQLITE_EXTENSION_INIT1;
 #define INSERT_SEQ_TMPL\
     "INSERT INTO " SEQ_SCHEMA_NAME " DEFAULT VALUES"
 
+#define INSERT_ATTR_TMPL\
+    "INSERT INTO " ATTR_SCHEMA_NAME " VALUES ( ?, ?, ? )"
+
 #define SCHEMA_PREFIX_SIZE            (sizeof(SCHEMA_PREFIX) - 1)
 #define SCHEMA_SUFFIX_SIZE            (sizeof(SCHEMA_SUFFIX) - 1)
 #define DEFAULT_ATTRIBUTE_COLUMN_SIZE (sizeof(DEFAULT_ATTRIBUTE_COLUMN) - 1)
@@ -69,6 +72,7 @@ struct attribute_vtab {
     char *database_name;
     char *table_name;
     sqlite3_stmt *insert_seq_stmt;
+    sqlite3_stmt *insert_attr_stmt;
 };
 
 static void sql_has_attr( sqlite3_context *ctx, int nargs,
@@ -182,6 +186,18 @@ static int _initialize_statements( struct attribute_vtab *vtab )
     }
 
     status = sqlite3_prepare_v2( vtab->db, sql, -1, &(vtab->insert_seq_stmt), NULL );
+
+    sqlite3_free( sql );
+
+    if(status != SQLITE_OK) {
+        /* our caller handles the mess */
+        return status;
+    }
+
+    sql = sqlite3_mprintf( INSERT_ATTR_TMPL, vtab->database_name,
+        vtab->table_name );
+
+    status = sqlite3_prepare_v2( vtab->db, sql, -1, &(vtab->insert_attr_stmt), NULL );
 
     sqlite3_free( sql );
 
@@ -329,6 +345,7 @@ static int attributes_disconnect( sqlite3_vtab *_vtab )
 {
     struct attribute_vtab *vtab = (struct attribute_vtab *) _vtab;
 
+    sqlite3_finalize( vtab->insert_attr_stmt );
     sqlite3_finalize( vtab->insert_seq_stmt );
     sqlite3_free( vtab->database_name );
     sqlite3_free( vtab->table_name );
