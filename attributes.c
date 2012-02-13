@@ -509,8 +509,8 @@ static int attributes_best_index( sqlite3_vtab *_vtab, sqlite3_index_info *index
 
 static int attributes_rename( sqlite3_vtab *_vtab, const char *new_name )
 {
-    _vtab->zErrMsg = sqlite3_mprintf( "%s", "renaming not implemented" );
-    return SQLITE_ERROR;
+    struct attribute_vtab *vtab = (struct attribute_vtab *) _vtab;
+    return UNIMPLD(vtab);
 }
 
 static int attributes_open_cursor( sqlite3_vtab *_vtab, sqlite3_vtab_cursor **cursor )
@@ -559,12 +559,14 @@ static int attributes_close_curor( sqlite3_vtab_cursor *_cursor )
 static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
     const char *idx_name, int argc, sqlite3_value **argv )
 {
-    return SQLITE_ERROR;
+    struct attribute_vtab *vtab = (struct attribute_vtab *) _cursor->pVtab;
+    return UNIMPLD(vtab);
 }
 
 static int attributes_next( sqlite3_vtab_cursor *_cursor )
 {
-    return SQLITE_ERROR;
+    struct attribute_vtab *vtab = (struct attribute_vtab *) _cursor->pVtab;
+    return UNIMPLD(vtab);
 }
 
 static int attributes_eof( sqlite3_vtab_cursor *_cursor )
@@ -574,13 +576,15 @@ static int attributes_eof( sqlite3_vtab_cursor *_cursor )
 
 static int attributes_row_id( sqlite3_vtab_cursor *_cursor, sqlite_int64 *rowid )
 {
-    return SQLITE_ERROR;
+    struct attribute_vtab *vtab = (struct attribute_vtab *) _cursor->pVtab;
+    return UNIMPLD(vtab);
 }
 
 static int attributes_column( sqlite3_vtab_cursor *_cursor, sqlite3_context *ctx,
     int col_index )
 {
-    return SQLITE_ERROR;
+    struct attribute_vtab *vtab = (struct attribute_vtab *) _cursor->pVtab;
+    return UNIMPLD(vtab);
 }
 
 static sqlite3_module module_definition = {
