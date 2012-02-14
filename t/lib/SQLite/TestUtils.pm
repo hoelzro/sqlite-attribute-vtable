@@ -11,7 +11,8 @@ my $RECORD_SEPARATOR = "\N{INFORMATION SEPARATOR ONE}";
 my $SQLITE_TABLE     = qr/^"(\w+)"\."(\w+)"$/;
 
 our @EXPORT = qw(check_deps check_schema create_dbh form_attr_string
-                 dump_tables);
+                 dump_tables create_attribute_table insert_rows
+                 check_sql);
 
 sub check_deps {
     my $ok = eval {
@@ -157,6 +158,94 @@ sub dump_tables {
 
         dump_table $dbh, $table;
     }
+}
+
+sub create_attribute_table {
+    my %options = @_;
+
+    my $dbh  = $options{'dbh'};
+    my $name = $options{'name'};
+
+    $dbh->do(<<"END_SQL");
+CREATE VIRTUAL TABLE $name USING attributes
+END_SQL
+}
+
+sub stringify_rows {
+    my ( $rows ) = @_;
+
+    foreach my $row (@$rows) {
+        foreach my $value (values %$row) {
+            if(ref($value) eq 'HASH') {
+                $value = form_attr_string(%$value);
+            }
+        }
+    }
+}
+
+sub insert_rows {
+    my ( $dbh, $table_name, @rows ) = @_;
+
+    my @columns      = sort keys(%{ $rows[0] });
+    my $columns      = join(', ', @columns);
+    my $placeholders = join(', ', ('?') x @columns);
+
+    my $sth = $dbh->prepare("INSERT INTO $table_name ($columns) VALUES ($placeholders)");
+
+    stringify_rows(\@rows);
+    foreach my $row (@rows) {
+        $sth->execute(@{$row}{@columns});
+    }
+
+}
+
+sub make_row_sortable {
+    my ( $row, @keys ) = @_;
+
+    join($RECORD_SEPARATOR, map {
+        join($RECORD_SEPARATOR, $_, $row->{$_})
+    } @keys)
+}
+
+sub reorder_rows {
+    my @rows = @_;
+
+    my @keys = sort keys %{ $rows[0] };
+
+    return sort {
+        make_row_sortable($a, @keys) cmp make_row_sortable($b, @keys)
+    } @rows;
+}
+
+sub check_sql {
+    my %options = @_;
+
+    local $Test::Builder::Level = $Test::Builder::Level + 1;
+
+    my $dbh      = $options{'dbh'};
+    my $sql      = $options{'sql'};
+    my $ordered  = exists $options{'ordered'} ? $options{'ordered'} : 1;
+    my $expected = $options{'rows'};
+
+    local $dbh->{'RaiseError'} = 1;
+
+    stringify_rows($expected);
+
+    my $sth = $dbh->prepare($sql);
+    $sth->execute;
+
+    my @rows;
+
+    while(my $row = $sth->fetchrow_hashref) {
+        push @rows, $row;
+    }
+
+    unless($ordered) {
+        @rows      = reorder_rows(@rows);
+        @$expected = reorder_rows(@$expected);
+    }
+
+    is_deeply \@rows, $expected;
 }
 
 1;
