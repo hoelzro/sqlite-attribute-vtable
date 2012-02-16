@@ -25,7 +25,7 @@ INSERT_DATA: {
             bar => 18,
         );
 
-        $dbh->do('INSERT INTO attrs1 VALUES (?)', undef, $attributes);
+        $dbh->do('INSERT INTO attrs1 (attributes) VALUES (?)', undef, $attributes);
     };
 
     ok($ok, 'inserting data into an attribute table should succeed')
@@ -41,7 +41,7 @@ SELECT_DATA: {
 
         my $row = $sth->fetch or diag($sth->errstr);
 
-        is $row->[0], form_attr_string(
+        is $row->[1], form_attr_string(
             foo => 17,
             bar => 18,
         );

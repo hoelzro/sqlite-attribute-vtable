@@ -35,6 +35,7 @@ END_SQL
         or diag($dbh->errstr);
 
     check_schema($dbh, attrs1 => {
+        id         => 1,
         attributes => 1,
     });
 

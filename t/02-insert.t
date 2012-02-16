@@ -25,7 +25,7 @@ INSERT_DATA: {
             bar => 18,
         );
 
-        $dbh->do('INSERT INTO attrs1 VALUES (?)', undef, $attributes);
+        $dbh->do('INSERT INTO attrs1 (attributes) VALUES (?)', undef, $attributes);
     };
 
     ok($ok, 'inserting data into an attribute table should succeed')
