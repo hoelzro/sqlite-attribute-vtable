@@ -479,33 +479,12 @@ static int attributes_rename( sqlite3_vtab *_vtab, const char *new_name )
 static int attributes_open_cursor( sqlite3_vtab *_vtab, sqlite3_vtab_cursor **cursor )
 {
     struct attribute_vtab *vtab = (struct attribute_vtab *) _vtab;
-    struct attribute_cursor *c  = NULL;
-    int status;
-    char *sql;
 
-    *cursor = NULL;
-
-    c = sqlite3_malloc( sizeof(struct attribute_cursor) );
-    if(! c) {
+    *cursor = sqlite3_malloc( sizeof(struct attribute_cursor) );
+    if(! cursor) {
         return SQLITE_NOMEM;
     }
 
-    sql = sqlite3_mprintf( SELECT_CURS_TMPL, vtab->database_name, vtab->table_name );
-
-    if(! sql) {
-        sqlite3_free( c );
-        return SQLITE_NOMEM;
-    }
-
-    status = sqlite3_prepare_v2( vtab->db, sql, -1, &(c->stmt), NULL );
-    sqlite3_free( sql );
-
-    if(status != SQLITE_OK) {
-        sqlite3_free( c );
-        return status;
-    }
-
-    *cursor = (sqlite3_vtab_cursor *) c;
     return SQLITE_OK;
 }
 
@@ -545,8 +524,17 @@ static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
     struct attribute_vtab *vtab = (struct attribute_vtab *) _cursor->pVtab;
     struct attribute_cursor *c  = (struct attribute_cursor *) _cursor;
     int status;
+    char *sql;
 
-    status = sqlite3_reset( c->stmt );
+    sql = sqlite3_mprintf( SELECT_CURS_TMPL, vtab->database_name, vtab->table_name );
+
+    if(! sql) {
+        sqlite3_free( c );
+        return SQLITE_NOMEM;
+    }
+
+    status = sqlite3_prepare_v2( vtab->db, sql, -1, &(c->stmt), NULL );
+    sqlite3_free( sql );
 
     if(status != SQLITE_OK) {
         return status;
