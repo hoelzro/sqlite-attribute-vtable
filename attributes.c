@@ -32,9 +32,10 @@ SQLITE_EXTENSION_INIT1;
 #define RECORD_SEPARATOR     '\x1f'
 #define RECORD_SEPARATOR_STR "\x1f"
 
-#define SCHEMA_PREFIX            "CREATE TABLE t ("
-#define SCHEMA_SUFFIX            ")"
-#define DEFAULT_ATTRIBUTE_COLUMN "attributes TEXT"
+#define VIRT_TABLE_SCHEMA\
+    "CREATE TABLE t ("\
+    "  attributes TEXT    NOT NULL"\
+    ")"
 
 #define SEQ_SCHEMA_NAME  "\"%w\".\"%w_Sequence\""
 #define ATTR_SCHEMA_NAME "\"%w\".\"%w_Attributes\""
@@ -114,91 +115,9 @@ static void sql_get_attr( sqlite3_context *ctx, int nargs,
 {
 }
 
-static int _calculate_column_length( const char *arg,
-    int *has_seen_attributes_p )
-{
-    char *p;
-
-    if(p = strstr(arg, "ATTRIBUTES")) {
-        *has_seen_attributes_p = 1;
-        return p - arg + sizeof("TEXT");
-    } else {
-        return strlen(arg);
-    }
-}
-
-static char *_allocate_schema_buffer( int argc, const char * const *argv,
-    size_t *buffer_length )
-{
-    int i;
-    size_t length = SCHEMA_PREFIX_SIZE + SCHEMA_SUFFIX_SIZE;
-    int has_seen_attributes = 0;
-
-    for(i = 0; i < argc; i++) {
-        length += _calculate_column_length( argv[i], &has_seen_attributes );
-        if(i != argc - 1) {
-            /* if it's not the last column definition, add another
-             * byte for the seperating comma */
-            length++;
-        }
-    }
-
-    if(! has_seen_attributes) {
-        length += DEFAULT_ATTRIBUTE_COLUMN_SIZE;
-        if(argc) {
-            length++; /* add another comma byte for the last column in our
-                       * previous loop that we didn't count */
-        }
-    }
-
-    length++; /* for the NULL */
-
-    *buffer_length = length;
-
-    return sqlite3_malloc(length);
-}
-
 static char *_build_schema( int argc, const char * const *argv )
 {
-    int i;
-    size_t buffer_length;
-    int has_seen_attributes = 0;
-    char *buffer = _allocate_schema_buffer( argc, argv, &buffer_length );
-
-    strncpy( buffer, SCHEMA_PREFIX, buffer_length );
-
-    // keywords - KEY, ATTRIBUTES
-
-    for(i = 0; i < argc; i++) {
-        char *p;
-
-        if(p = strstr( argv[i], "ATTRIBUTES" )) {
-            char *dest = buffer + strlen( buffer );
-            // XXX bounds checking?
-            memcpy( dest, argv[i], p - argv[i] );
-            dest += p - argv[i];
-            memcpy( dest, "TEXT", sizeof("TEXT") ); /* this includes the NULL
-                                                   * for us */
-            has_seen_attributes = 1;
-        } else {
-            // XXX check error
-            strncat( buffer, argv[i], buffer_length );
-        }
-        if(i != argc - 1) {
-            strncat( buffer, ",", buffer_length );
-        }
-    }
-
-    if(! has_seen_attributes) {
-        if(argc) {
-            strncat( buffer, ",", buffer_length );
-        }
-        strncat( buffer, "attributes TEXT", buffer_length );
-    }
-
-    strncat( buffer, SCHEMA_SUFFIX, buffer_length );
-
-    return buffer;
+    return sqlite3_mprintf("%s", VIRT_TABLE_SCHEMA);
 }
 
 static int _initialize_statements( struct attribute_vtab *vtab )
