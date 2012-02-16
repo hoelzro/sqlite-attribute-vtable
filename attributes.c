@@ -662,10 +662,10 @@ int sql_attr_init( sqlite3 *db, char **error,
 {
     SQLITE_EXTENSION_INIT2(api);
 
-    sqlite3_create_function( db, "has_attr", 1, SQLITE_UTF8, NULL,
+    sqlite3_create_function( db, "has_attr", 2, SQLITE_UTF8, NULL,
         sql_has_attr, NULL, NULL );
 
-    sqlite3_create_function( db, "get_attr", 1, SQLITE_UTF8, NULL,
+    sqlite3_create_function( db, "get_attr", 2, SQLITE_UTF8, NULL,
         sql_get_attr, NULL, NULL );
 
     sqlite3_create_module( db, MODULE_NAME, &module_definition, NULL );
