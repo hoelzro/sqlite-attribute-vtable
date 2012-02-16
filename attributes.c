@@ -114,6 +114,46 @@ static void sql_has_attr( sqlite3_context *ctx, int nargs,
 static void sql_get_attr( sqlite3_context *ctx, int nargs,
     sqlite3_value **values )
 {
+    const char *attributes;
+    const char *attr_name;
+    char *needle;
+    const char *attr_location = NULL;
+    size_t name_len;
+
+    attributes = sqlite3_value_text( values[0] );
+    attr_name  = sqlite3_value_text( values[1] );
+
+    name_len = strlen( attr_name );
+    needle   = sqlite3_malloc( name_len + 2 ); /* one for NULL, one for
+                                                record separator */
+
+    needle[0] = RECORD_SEPARATOR;
+    strcpy(needle + 1, attr_name);
+    needle[name_len + 1] = RECORD_SEPARATOR;
+    needle[name_len + 2] = '\0';
+
+    if(! strncmp( attributes, needle + 1, name_len + 1 )) {
+        attr_location = attributes + name_len + 1;
+    }
+
+    if(! attr_location) {
+        attr_location = strstr( attributes, needle );
+        if(attr_location) {
+            attr_location += name_len + 2;
+        }
+    }
+
+    if(attr_location) {
+        const char *attr_end;
+
+        attr_end = strchr( attr_location, RECORD_SEPARATOR );
+        if(! attr_end) {
+            attr_end = attr_location + strlen( attr_location );
+        }
+        sqlite3_result_text( ctx, attr_location, attr_end - attr_location, SQLITE_TRANSIENT );
+    } else {
+        sqlite3_result_null( ctx );
+    }
 }
 
 static char *_build_schema( int argc, const char * const *argv )
