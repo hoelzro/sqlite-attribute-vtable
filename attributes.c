@@ -60,7 +60,7 @@ SQLITE_EXTENSION_INIT1;
     "INSERT INTO " ATTR_SCHEMA_NAME " VALUES ( ?, ?, ? )"
 
 #define SELECT_CURS_TMPL\
-    "SELECT group_concat(attr_name || '" RECORD_SEPARATOR_STR\
+    "SELECT seq_id, group_concat(attr_name || '" RECORD_SEPARATOR_STR\
     "' || attr_value, '" RECORD_SEPARATOR_STR "') FROM " ATTR_SCHEMA_NAME\
     " GROUP BY seq_id"
 
@@ -369,7 +369,7 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
     *rowid = sqlite3_last_insert_rowid( vtab->db );
     sqlite3_reset( vtab->insert_seq_stmt );
 
-    attributes = sqlite3_value_text( argv[2] );
+    attributes = sqlite3_value_text( argv[3] );
     while(key_endp = strchr( attributes, RECORD_SEPARATOR )) {
         const char *key;
         const char *value;
