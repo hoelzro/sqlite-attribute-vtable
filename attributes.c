@@ -43,7 +43,8 @@ SQLITE_EXTENSION_INIT1;
 
 #define SEQ_SCHEMA_TMPL\
     "CREATE TABLE " SEQ_SCHEMA_NAME " ("\
-    "  seq_id INTEGER NOT NULL PRIMARY KEY "\
+    "  seq_id     INTEGER NOT NULL PRIMARY KEY, "\
+    "  attributes TEXT NOT NULL"\
     ")"
 
 #define ATTR_SCHEMA_TMPL\
@@ -54,19 +55,19 @@ SQLITE_EXTENSION_INIT1;
     ")"
 
 #define INSERT_SEQ_TMPL\
-    "INSERT INTO " SEQ_SCHEMA_NAME " DEFAULT VALUES"
+    "INSERT INTO " SEQ_SCHEMA_NAME " (attributes) VALUES (?)"
 
 #define INSERT_ATTR_TMPL\
     "INSERT INTO " ATTR_SCHEMA_NAME " VALUES ( ?, ?, ? )"
 
 #define SELECT_CURS_TMPL\
-    "SELECT seq_id, group_concat(attr_name || '" RECORD_SEPARATOR_STR\
-    "' || attr_value, '" RECORD_SEPARATOR_STR "') FROM " ATTR_SCHEMA_NAME\
-    " GROUP BY seq_id"
+    "SELECT seq_id, attributes FROM " SEQ_SCHEMA_NAME
 
 #define SCHEMA_PREFIX_SIZE            (sizeof(SCHEMA_PREFIX) - 1)
 #define SCHEMA_SUFFIX_SIZE            (sizeof(SCHEMA_SUFFIX) - 1)
 #define DEFAULT_ATTRIBUTE_COLUMN_SIZE (sizeof(DEFAULT_ATTRIBUTE_COLUMN) - 1)
+
+#define SEQ_ATTR_COL 1
 
 #define ATTR_SEQ_COL 1
 #define ATTR_KEY_COL 2
@@ -400,6 +401,10 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
     const char *attributes;
     const char *key_endp;
 
+    attributes = sqlite3_value_text( argv[3] );
+
+    /* XXX bind_value? */
+    sqlite3_bind_text( vtab->insert_seq_stmt, SEQ_ATTR_COL, attributes, -1, SQLITE_TRANSIENT );
     status = sqlite3_step( vtab->insert_seq_stmt );
 
     if(status != SQLITE_DONE) {
@@ -409,7 +414,6 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
     *rowid = sqlite3_last_insert_rowid( vtab->db );
     sqlite3_reset( vtab->insert_seq_stmt );
 
-    attributes = sqlite3_value_text( argv[3] );
     while(key_endp = strchr( attributes, RECORD_SEPARATOR )) {
         const char *key;
         const char *value;
