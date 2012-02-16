@@ -34,6 +34,7 @@ SQLITE_EXTENSION_INIT1;
 
 #define VIRT_TABLE_SCHEMA\
     "CREATE TABLE t ("\
+    "  id         INTEGER NOT NULL,"\
     "  attributes TEXT    NOT NULL"\
     ")"
 
