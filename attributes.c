@@ -627,22 +627,114 @@ static int attributes_column( sqlite3_vtab_cursor *_cursor, sqlite3_context *ctx
     return SQLITE_OK;
 }
 
+static void _attribute_match_func(sqlite3_context *ctx, int nargs, sqlite3_value **values)
+{
+    const char *query;
+    const char *attributes;
+    int found;
+
+    query      = sqlite3_value_text(values[0]);
+    attributes = sqlite3_value_text(values[1]);
+
+    if(strchr(query, RECORD_SEPARATOR)) { /* searching for a key value pair */
+        size_t query_len;
+        char *needle;
+
+        /* If there is only a single attribute, and it matches our
+         * query, return with success */
+        if(! strcmp(attributes, query)) {
+            sqlite3_result_int(ctx, 1);
+            return;
+        }
+
+        query_len = strlen(query);
+        needle    = sqlite3_malloc(query_len + 3); /* one for the NULL
+                                                      one for each
+                                                      record separator
+                                                   */
+        needle[0] = RECORD_SEPARATOR;
+        strcpy(needle + 1, query);
+        needle[query_len + 1] = RECORD_SEPARATOR;
+        needle[query_len + 2] = '\0';
+
+        /* check at the beginning of the string */
+        found = !strncmp(attributes, needle + 1, query_len + 1);
+
+        /* check at the end of the string */
+        if(! found) {
+            needle[query_len + 1] = '\0';
+            found = !strcmp(attributes + strlen(attributes) - query_len - 1,
+                needle);
+            needle[query_len + 1] = RECORD_SEPARATOR;
+        }
+
+        if(! found) {
+            found = strstr(attributes, needle) != NULL;
+        }
+
+        sqlite3_free(needle);
+
+        sqlite3_result_int(ctx, found);
+    } else { /* searching for whether or not a key is present */
+        size_t query_len;
+        char *needle;
+
+        query_len = strlen(query);
+        needle    = sqlite3_malloc(query_len + 3); /* one for the NULL
+                                                      one for each
+                                                      record seperator
+                                                   */
+        needle[0] = RECORD_SEPARATOR;
+        strcpy(needle + 1, query);
+        needle[query_len + 1] = RECORD_SEPARATOR;
+        needle[query_len + 2] = '\0';
+
+        found = !strncmp(attributes, needle + 1, query_len + 1);
+
+        if(! found) {
+            found = strstr(attributes, needle) != NULL;
+        }
+
+        sqlite3_free(needle);
+
+        sqlite3_result_int(ctx, found);
+    }
+}
+
+static int attributes_find_function(sqlite3_vtab *_vtab, int nArg,
+    const char *zName, void (**pxFunc)(sqlite3_context *, int, sqlite3_value **),
+    void **ppArg)
+{
+    struct attribute_vtab *vtab = (struct attribute_vtab *) _vtab;
+
+    if(strcmp(zName, "match")) {
+        *pxFunc = NULL;
+        return 0;
+    }
+
+    *pxFunc = _attribute_match_func;
+    *ppArg  = NULL;
+
+    return 1;
+}
+
 static sqlite3_module module_definition = {
-    .iVersion    = MODULE_VERSION,
-    .xCreate     = attributes_create,
-    .xConnect    = attributes_connect,
-    .xDisconnect = attributes_disconnect,
-    .xDestroy    = attributes_destroy,
-    .xUpdate     = attributes_update,
-    .xBestIndex  = attributes_best_index,
-    .xRename     = attributes_rename,
-    .xOpen       = attributes_open_cursor,
-    .xClose      = attributes_close_curor,
-    .xFilter     = attributes_filter,
-    .xNext       = attributes_next,
-    .xEof        = attributes_eof,
-    .xRowid      = attributes_row_id,
-    .xColumn     = attributes_column
+    .iVersion      = MODULE_VERSION,
+    .xCreate       = attributes_create,
+    .xConnect      = attributes_connect,
+    .xDisconnect   = attributes_disconnect,
+    .xDestroy      = attributes_destroy,
+    .xUpdate       = attributes_update,
+    .xBestIndex    = attributes_best_index,
+    .xRename       = attributes_rename,
+    .xOpen         = attributes_open_cursor,
+    .xClose        = attributes_close_curor,
+    .xFilter       = attributes_filter,
+    .xNext         = attributes_next,
+    .xEof          = attributes_eof,
+    .xRowid        = attributes_row_id,
+    .xColumn       = attributes_column,
+    .xFindFunction = attributes_find_function
 };
 
 int sql_attr_init( sqlite3 *db, char **error,
