@@ -183,4 +183,38 @@ check_sql(
     rows    => [],
 );
 
+check_sql(
+    dbh     => $dbh,
+    sql     => 'SELECT * FROM attributes ORDER BY id',
+    ordered => 1,
+    rows    => [{
+        id         => 1,
+        attributes => {
+            foo => 17,
+            bar => 18,
+        },
+    }, {
+        id         => 2,
+        attributes => {
+            bar => 19,
+            baz => 20,
+        },
+    }, {
+        id         => 3,
+        attributes => {
+            bar => 18,
+        },
+    }, {
+        id         => 4,
+        attributes => {
+            foo => 16,
+        },
+    }, {
+        id         => 10,
+        attributes => {
+            foo => 17,
+        },
+    }],
+);
+
 done_testing;
