@@ -591,6 +591,7 @@ static int attributes_open_cursor( sqlite3_vtab *_vtab, sqlite3_vtab_cursor **cu
     if(! cursor) {
         return SQLITE_NOMEM;
     }
+    memset( *cursor, 0, sizeof(struct attribute_cursor) );
 
     return SQLITE_OK;
 }
@@ -654,6 +655,7 @@ static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
         return SQLITE_NOMEM;
     }
 
+    sqlite3_finalize( c->stmt );
     status = sqlite3_prepare_v2( vtab->db, sql, -1, &(c->stmt), NULL );
     sqlite3_free( sql );
 
