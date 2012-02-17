@@ -640,7 +640,15 @@ static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **arg
 
         return _perform_insert( vtab, argc, argv, rowid );
     } else { /* UPDATE */
-        _vtab->zErrMsg = sqlite3_mprintf( "%s", "updating the table is forbidden" );
+        int status;
+
+        *rowid = sqlite3_value_int64( argv[0] );
+        status = _perform_delete( vtab, *rowid );
+        if(status != SQLITE_OK) {
+            /* XXX rollback transaction? */
+            return status;
+        }
+        return _perform_insert( vtab, argc, argv, rowid );
     }
 
     return SQLITE_ERROR;
