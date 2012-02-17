@@ -250,4 +250,39 @@ check_sql(
     }],
 );
 
+$ok = do {
+    local $dbh->{'RaiseError'} = 0;
+
+    my $new_attrs = $dbh->quote(form_attr_string(
+        foo => 18,
+    ));
+
+    $dbh->do("UPDATE attributes SET attributes = $new_attrs WHERE id = 10");
+};
+
+ok $ok, 'updating rows should work' or diag($dbh->errstr);
+
+check_sql(
+    dbh     => $dbh,
+    sql     => 'SELECT * FROM attributes ORDER BY id',
+    ordered => 1,
+    rows    => [{
+        id         => 2,
+        attributes => {
+            bar => 19,
+            baz => 20,
+        },
+    }, {
+        id         => 4,
+        attributes => {
+            foo => 16,
+        },
+    }, {
+        id         => 10,
+        attributes => {
+            foo => 18,
+        },
+    }],
+);
+
 done_testing;
