@@ -188,17 +188,24 @@ sub stringify_rows {
 sub insert_rows {
     my ( $dbh, $table_name, @rows ) = @_;
 
+    my $ok = 1;
+
+    local $dbh->{'RaiseError'} = defined(wantarray) ? 0 : $dbh->{'RaiseError'};
+
     my @columns      = sort keys(%{ $rows[0] });
     my $columns      = join(', ', @columns);
     my $placeholders = join(', ', ('?') x @columns);
 
     my $sth = $dbh->prepare("INSERT INTO $table_name ($columns) VALUES ($placeholders)");
 
+    return 0 unless $sth;
+
     stringify_rows(\@rows);
     foreach my $row (@rows) {
-        $sth->execute(@{$row}{@columns});
+        $ok &&= $sth->execute(@{$row}{@columns});
     }
 
+    return $ok;
 }
 
 sub make_row_sortable {
