@@ -12,7 +12,7 @@ my $SQLITE_TABLE     = qr/^"(\w+)"\."(\w+)"$/;
 
 our @EXPORT = qw(check_deps check_schema create_dbh form_attr_string
                  dump_tables create_attribute_table insert_rows
-                 check_sql);
+                 check_sql dump_table);
 
 sub check_deps {
     my $ok = eval {
