@@ -146,4 +146,26 @@ check_sql(
     }],
 );
 
+my $ok;
+
+$ok = insert_rows $dbh, 'attributes', ({
+    id         => 15,
+    attributes => {
+        a => 1,
+    },
+});
+
+ok !$ok, 'inserting a row with a duplicate primary key should fail';
+like $dbh->errstr, qr/PRIMARY KEY must be unique/;
+
+$ok = insert_rows $dbh, 'attributes', ({
+    ROWID      => 10,
+    attributes => {
+        b => 2,
+    },
+});
+
+ok !$ok, 'inserting a row with a duplicate primary key should fail';
+like $dbh->errstr, qr/PRIMARY KEY must be unique/;
+
 done_testing;
