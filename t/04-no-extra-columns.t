@@ -217,4 +217,37 @@ check_sql(
     }],
 );
 
+$ok = do {
+    local $dbh->{'RaiseError'} = 0;
+
+    my $rs = get_record_separator();
+
+    $dbh->do("DELETE FROM attributes WHERE attributes MATCH 'bar${rs}18'");
+};
+
+ok $ok, 'deleting rows matching attributes should work' or diag($dbh->errstr);
+
+check_sql(
+    dbh     => $dbh,
+    sql     => 'SELECT * FROM attributes ORDER BY id',
+    ordered => 1,
+    rows    => [{
+        id         => 2,
+        attributes => {
+            bar => 19,
+            baz => 20,
+        },
+    }, {
+        id         => 4,
+        attributes => {
+            foo => 16,
+        },
+    }, {
+        id         => 10,
+        attributes => {
+            foo => 17,
+        },
+    }],
+);
+
 done_testing;
