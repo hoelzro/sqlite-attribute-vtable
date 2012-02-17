@@ -64,8 +64,11 @@ SQLITE_EXTENSION_INIT1;
 #define INSERT_ATTR_TMPL\
     "INSERT INTO " ATTR_SCHEMA_NAME " VALUES ( ?, ?, ? )"
 
-#define DELETE_TMPL\
+#define DELETE_SEQ_TMPL\
     "DELETE FROM " SEQ_SCHEMA_NAME " WHERE seq_id = ?"
+
+#define DELETE_ATTR_TMPL\
+    "DELETE FROM " ATTR_SCHEMA_NAME " WHERE seq_id = ?"
 
 #define SELECT_CURS_TMPL\
     "SELECT seq_id, attributes FROM " SEQ_SCHEMA_NAME
@@ -557,7 +560,34 @@ static int _perform_delete( struct attribute_vtab *vtab, sqlite3_int64 rowid )
     sqlite3_stmt *stmt;
     int status;
 
-    sql = sqlite3_mprintf( DELETE_TMPL, vtab->database_name,
+    sql = sqlite3_mprintf( DELETE_SEQ_TMPL, vtab->database_name,
+        vtab->table_name );
+
+    if(! sql) {
+        return SQLITE_NOMEM;
+    }
+
+    status = sqlite3_prepare_v2( vtab->db, sql, -1, &stmt, NULL );
+
+    sqlite3_free( sql );
+
+    if(status != SQLITE_OK) {
+        vtab->vtab.zErrMsg = sqlite3_mprintf( "%s",
+            sqlite3_errmsg( vtab->db ) );
+        return status;
+    }
+
+    sqlite3_bind_int64( stmt, 1, rowid );
+
+    status = sqlite3_step( stmt );
+
+    sqlite3_finalize( stmt );
+
+    if(status != SQLITE_DONE) {
+        return status;
+    }
+
+    sql = sqlite3_mprintf( DELETE_ATTR_TMPL, vtab->database_name,
         vtab->table_name );
 
     if(! sql) {
