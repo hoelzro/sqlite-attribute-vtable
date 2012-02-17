@@ -64,7 +64,9 @@ sub create_dbh {
 
     require DBI;
 
-    my $dbh = DBI->connect('dbi:SQLite:dbname=:memory:', undef, undef, {
+    my $filename = $options{'filename'} || ':memory:';
+
+    my $dbh = DBI->connect("dbi:SQLite:dbname=$filename", undef, undef, {
         RaiseError => 1,
         PrintError => 0,
     });
