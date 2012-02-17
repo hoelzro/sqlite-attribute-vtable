@@ -123,40 +123,29 @@ static int __unimplemented(struct attribute_vtab *vtab, const char *func_name)
     return SQLITE_ERROR;
 }
 
-static void sql_has_attr( sqlite3_context *ctx, int nargs,
-    sqlite3_value **values )
+static const char *extract_attribute_value(const char *attributes, const char *key, size_t *value_len)
 {
-}
-
-static void sql_get_attr( sqlite3_context *ctx, int nargs,
-    sqlite3_value **values )
-{
-    const char *attributes;
-    const char *attr_name;
     char *needle;
     const char *attr_location = NULL;
-    size_t name_len;
+    size_t key_len;
 
-    attributes = sqlite3_value_text( values[0] );
-    attr_name  = sqlite3_value_text( values[1] );
-
-    name_len = strlen( attr_name );
-    needle   = sqlite3_malloc( name_len + 2 ); /* one for NULL, one for
+    key_len = strlen( key );
+    needle  = sqlite3_malloc( key_len + 2 ); /* one for NULL, one for
                                                 record separator */
 
     needle[0] = RECORD_SEPARATOR;
-    strcpy(needle + 1, attr_name);
-    needle[name_len + 1] = RECORD_SEPARATOR;
-    needle[name_len + 2] = '\0';
+    strcpy(needle + 1, key);
+    needle[key_len + 1] = RECORD_SEPARATOR;
+    needle[key_len + 2] = '\0';
 
-    if(! strncmp( attributes, needle + 1, name_len + 1 )) {
-        attr_location = attributes + name_len + 1;
+    if(! strncmp( attributes, needle + 1, key_len + 1 )) {
+        attr_location = attributes + key_len + 1;
     }
 
     if(! attr_location) {
         attr_location = strstr( attributes, needle );
         if(attr_location) {
-            attr_location += name_len + 2;
+            attr_location += key_len + 2;
         }
     }
 
@@ -167,7 +156,33 @@ static void sql_get_attr( sqlite3_context *ctx, int nargs,
         if(! attr_end) {
             attr_end = attr_location + strlen( attr_location );
         }
-        sqlite3_result_text( ctx, attr_location, attr_end - attr_location, SQLITE_TRANSIENT );
+        *value_len = attr_end - attr_location;
+        return attr_location;
+    } else {
+        return NULL;
+    }
+}
+
+static void sql_has_attr( sqlite3_context *ctx, int nargs,
+    sqlite3_value **values )
+{
+}
+
+static void sql_get_attr( sqlite3_context *ctx, int nargs,
+    sqlite3_value **values )
+{
+    const char *attributes;
+    const char *attr_name;
+    const char *attr_value;
+    size_t value_length;
+
+    attributes = sqlite3_value_text( values[0] );
+    attr_name  = sqlite3_value_text( values[1] );
+    attr_value = extract_attribute_value( attributes, attr_name,
+        &value_length );
+
+    if(attr_value) {
+        sqlite3_result_text( ctx, attr_value, value_length, SQLITE_TRANSIENT );
     } else {
         sqlite3_result_null( ctx );
     }
@@ -662,73 +677,26 @@ static void _attribute_match_func(sqlite3_context *ctx, int nargs, sqlite3_value
 {
     const char *query;
     const char *attributes;
-    int found;
+    const char *rs_location;
+    const char *attr_value;
+    size_t value_len;
 
     query      = sqlite3_value_text(values[0]);
     attributes = sqlite3_value_text(values[1]);
 
-    if(strchr(query, RECORD_SEPARATOR)) { /* searching for a key value pair */
-        size_t query_len;
-        char *needle;
+    if(rs_location = strchr(query, RECORD_SEPARATOR)) { /* searching for a key value pair */
+        char *key = sqlite3_malloc( rs_location - query + 1 ); /* one for the NULL */
+        strncpy( key, query, rs_location - query );
 
-        /* If there is only a single attribute, and it matches our
-         * query, return with success */
-        if(! strcmp(attributes, query)) {
-            sqlite3_result_int(ctx, 1);
-            return;
-        }
+        attr_value = extract_attribute_value( attributes, key, &value_len );
 
-        query_len = strlen(query);
-        needle    = sqlite3_malloc(query_len + 3); /* one for the NULL
-                                                      one for each
-                                                      record separator
-                                                   */
-        needle[0] = RECORD_SEPARATOR;
-        strcpy(needle + 1, query);
-        needle[query_len + 1] = RECORD_SEPARATOR;
-        needle[query_len + 2] = '\0';
+        sqlite3_free( key );
 
-        /* check at the beginning of the string */
-        found = !strncmp(attributes, needle + 1, query_len + 1);
-
-        /* check at the end of the string */
-        if(! found) {
-            needle[query_len + 1] = '\0';
-            found = !strcmp(attributes + strlen(attributes) - query_len - 1,
-                needle);
-            needle[query_len + 1] = RECORD_SEPARATOR;
-        }
-
-        if(! found) {
-            found = strstr(attributes, needle) != NULL;
-        }
-
-        sqlite3_free(needle);
-
-        sqlite3_result_int(ctx, found);
+        sqlite3_result_int( ctx, !strncmp( rs_location + 1, attr_value, value_len ) );
     } else { /* searching for whether or not a key is present */
-        size_t query_len;
-        char *needle;
+        attr_value = extract_attribute_value( attributes, query, &value_len );
 
-        query_len = strlen(query);
-        needle    = sqlite3_malloc(query_len + 3); /* one for the NULL
-                                                      one for each
-                                                      record seperator
-                                                   */
-        needle[0] = RECORD_SEPARATOR;
-        strcpy(needle + 1, query);
-        needle[query_len + 1] = RECORD_SEPARATOR;
-        needle[query_len + 2] = '\0';
-
-        found = !strncmp(attributes, needle + 1, query_len + 1);
-
-        if(! found) {
-            found = strstr(attributes, needle) != NULL;
-        }
-
-        sqlite3_free(needle);
-
-        sqlite3_result_int(ctx, found);
+        sqlite3_result_int( ctx, attr_value != NULL );
     }
 }
 
