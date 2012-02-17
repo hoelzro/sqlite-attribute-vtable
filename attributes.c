@@ -63,6 +63,16 @@ SQLITE_EXTENSION_INIT1;
 #define SELECT_CURS_TMPL\
     "SELECT seq_id, attributes FROM " SEQ_SCHEMA_NAME
 
+#define SELECT_CURS_WITH_KEY_TMPL\
+    "SELECT s.seq_id, s.attributes FROM " SEQ_SCHEMA_NAME " AS s "\
+    "INNER JOIN " ATTR_SCHEMA_NAME " AS a ON a.seq_id = s.seq_id "\
+    "WHERE a.attr_name = ?"
+
+#define SELECT_CURS_WITH_KEY_VALUE_TMPL\
+    "SELECT s.seq_id, s.attributes FROM " SEQ_SCHEMA_NAME " AS s "\
+    "INNER JOIN " ATTR_SCHEMA_NAME " AS a ON a.seq_id = s.seq_id "\
+    "WHERE a.attr_name = ? AND a.attr_value = ?"
+
 #define SCHEMA_PREFIX_SIZE            (sizeof(SCHEMA_PREFIX) - 1)
 #define SCHEMA_SUFFIX_SIZE            (sizeof(SCHEMA_SUFFIX) - 1)
 #define DEFAULT_ATTRIBUTE_COLUMN_SIZE (sizeof(DEFAULT_ATTRIBUTE_COLUMN) - 1)
@@ -74,6 +84,8 @@ SQLITE_EXTENSION_INIT1;
 #define ATTR_VAL_COL 3
 
 #define CURS_SEQ_COL 0
+
+#define ATTR_NAME_INDEX 1
 
 #define UNIMPLD(vtab)\
     __unimplemented(vtab, __FUNCTION__)
@@ -471,6 +483,21 @@ static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **arg
 
 static int attributes_best_index( sqlite3_vtab *_vtab, sqlite3_index_info *index_info )
 {
+    int i;
+
+    for(i = 0; i < index_info->nConstraint; i++) {
+        struct sqlite3_index_constraint *constraint = index_info->aConstraint + i;
+
+        /* XXX not sure if SEQ_ATTR_COL is the best choice here... */
+        if(constraint->iColumn == SEQ_ATTR_COL && constraint->op == SQLITE_INDEX_CONSTRAINT_MATCH) {
+            index_info->aConstraintUsage[i].argvIndex = 1;
+            index_info->aConstraintUsage[i].omit      = 1 ;
+            index_info->idxNum                        = ATTR_NAME_INDEX;
+            index_info->estimatedCost                 = 1; /* dummy value for now */
+            break;
+        }
+    }
+
     return SQLITE_OK;
 }
 
@@ -530,7 +557,21 @@ static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
     int status;
     char *sql;
 
-    sql = sqlite3_mprintf( SELECT_CURS_TMPL, vtab->database_name, vtab->table_name );
+    if(idx_num == ATTR_NAME_INDEX) {
+        const char *match = sqlite3_value_text( argv[0] );
+
+        if(strchr(match, RECORD_SEPARATOR)) {
+            sql = sqlite3_mprintf( SELECT_CURS_WITH_KEY_VALUE_TMPL,
+                vtab->database_name, vtab->table_name,
+                vtab->database_name, vtab->table_name);
+        } else {
+            sql = sqlite3_mprintf( SELECT_CURS_WITH_KEY_TMPL,
+                vtab->database_name, vtab->table_name,
+                vtab->database_name, vtab->table_name);
+        }
+    } else {
+        sql = sqlite3_mprintf( SELECT_CURS_TMPL, vtab->database_name, vtab->table_name );
+    }
 
     if(! sql) {
         sqlite3_free( c );
@@ -544,6 +585,27 @@ static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
         return status;
     }
     c->eof = 0;
+
+    if(idx_num == ATTR_NAME_INDEX) {
+        const char *match = sqlite3_value_text( argv[0] );
+
+        if(strchr(match, RECORD_SEPARATOR)) {
+            const char *key;
+            const char *value;
+
+            key   = match;
+            value = strchr(match, RECORD_SEPARATOR);
+
+            sqlite3_bind_text( c->stmt, 1, key, value - key, SQLITE_TRANSIENT );
+
+            value++;
+
+            sqlite3_bind_text( c->stmt, 2, value, -1, SQLITE_TRANSIENT );
+        } else {
+            /* XXX bind_value? */
+            sqlite3_bind_text( c->stmt, 1, match, -1, SQLITE_TRANSIENT );
+        }
+    }
 
     return attributes_get_row( c );
 }
