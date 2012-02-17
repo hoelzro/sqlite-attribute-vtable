@@ -168,4 +168,19 @@ $ok = insert_rows $dbh, 'attributes', ({
 ok !$ok, 'inserting a row with a duplicate primary key should fail';
 like $dbh->errstr, qr/PRIMARY KEY must be unique/;
 
+$ok = do {
+    local $dbh->{'RaiseError'} = 0;
+
+    $dbh->do('DELETE FROM attributes WHERE id = 15');
+};
+
+ok $ok, 'deleting rows should work' or diag($dbh->errstr);
+
+check_sql(
+    dbh     => $dbh,
+    sql     => 'SELECT * FROM attributes WHERE id = 15',
+    ordered => 0,
+    rows    => [],
+);
+
 done_testing;
