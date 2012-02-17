@@ -545,7 +545,7 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
     if(info.error_code == SQLITE_DONE) {
         return SQLITE_OK;
     }
-    return SQLITE_DONE;
+    return info.error_code;
 }
 
 static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **argv, sqlite_int64 *rowid )
