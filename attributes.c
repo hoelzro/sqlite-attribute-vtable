@@ -34,7 +34,7 @@ SQLITE_EXTENSION_INIT1;
 
 #define VIRT_TABLE_SCHEMA\
     "CREATE TABLE t ("\
-    "  id         INTEGER NOT NULL,"\
+    "  id         INTEGER PRIMARY KEY,"\
     "  attributes TEXT    NOT NULL"\
     ")"
 
@@ -43,13 +43,13 @@ SQLITE_EXTENSION_INIT1;
 
 #define SEQ_SCHEMA_TMPL\
     "CREATE TABLE " SEQ_SCHEMA_NAME " ("\
-    "  seq_id     INTEGER NOT NULL PRIMARY KEY, "\
+    "  seq_id     INTEGER PRIMARY KEY, "\
     "  attributes TEXT NOT NULL"\
     ")"
 
 #define ATTR_SCHEMA_TMPL\
     "CREATE TABLE " ATTR_SCHEMA_NAME " ("\
-    "  seq_id     INTEGER NOT NULL REFERENCES \"%w_Sequence\" (seq_id) ON DELETE CASCADE, "\
+    "  seq_id     INTEGER REFERENCES \"%w_Sequence\" (seq_id) ON DELETE CASCADE, "\
     "  attr_name  TEXT    NOT NULL, "\
     "  attr_value TEXT    NOT NULL "\
     ")"
@@ -59,7 +59,7 @@ SQLITE_EXTENSION_INIT1;
     " ( attr_name, seq_id ) "
 
 #define INSERT_SEQ_TMPL\
-    "INSERT INTO " SEQ_SCHEMA_NAME " (attributes) VALUES (?)"
+    "INSERT INTO " SEQ_SCHEMA_NAME " (attributes, seq_id) VALUES (?, ?)"
 
 #define INSERT_ATTR_TMPL\
     "INSERT INTO " ATTR_SCHEMA_NAME " VALUES ( ?, ?, ? )"
@@ -82,6 +82,7 @@ SQLITE_EXTENSION_INIT1;
 #define DEFAULT_ATTRIBUTE_COLUMN_SIZE (sizeof(DEFAULT_ATTRIBUTE_COLUMN) - 1)
 
 #define SEQ_ATTR_COL 1
+#define SEQ_ID_COL   2
 
 #define ATTR_SEQ_COL 1
 #define ATTR_KEY_COL 2
@@ -517,6 +518,12 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
 
     attributes = sqlite3_value_text( argv[3] );
 
+    if(*rowid == 0) { /* we provide our own ROWID */
+        sqlite3_bind_null( vtab->insert_seq_stmt, SEQ_ID_COL );
+    } else {
+        sqlite3_bind_int64( vtab->insert_seq_stmt, SEQ_ID_COL, *rowid );
+    }
+
     /* XXX bind_value? */
     sqlite3_bind_text( vtab->insert_seq_stmt, SEQ_ATTR_COL, attributes, -1, SQLITE_TRANSIENT );
     status = sqlite3_step( vtab->insert_seq_stmt );
@@ -545,11 +552,21 @@ static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **arg
     if(argc == 1) { /* DELETE */
         _vtab->zErrMsg = sqlite3_mprintf( "%s", "deleting from the table is forbidden" );
     } else if(sqlite3_value_type(argv[0]) == SQLITE_NULL) { /* INSERT */
-        if(sqlite3_value_type(argv[1]) == SQLITE_NULL) {
-            return _perform_insert( (struct attribute_vtab *) _vtab, argc, argv, rowid );
-        } else {
-            _vtab->zErrMsg = sqlite3_mprintf( "%s", "providing your own ROWID is forbidden" );
+        int type_rowid;
+        int type_id;
+
+        type_rowid = sqlite3_value_type(argv[1]);
+        type_id    = sqlite3_value_type(argv[2]);
+
+        if(type_rowid == SQLITE_NULL && type_id == SQLITE_NULL) {
+            *rowid = 0;
+        } else if(type_rowid != SQLITE_NULL) {
+            *rowid = sqlite3_value_int64( argv[1] );
+        } else { /* type_id != SQLITE_NULL */
+            *rowid = sqlite3_value_int64( argv[2] );
         }
+
+        return _perform_insert( (struct attribute_vtab *) _vtab, argc, argv, rowid );
     } else { /* UPDATE */
         _vtab->zErrMsg = sqlite3_mprintf( "%s", "updating the table is forbidden" );
     }
