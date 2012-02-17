@@ -64,6 +64,9 @@ SQLITE_EXTENSION_INIT1;
 #define INSERT_ATTR_TMPL\
     "INSERT INTO " ATTR_SCHEMA_NAME " VALUES ( ?, ?, ? )"
 
+#define DELETE_TMPL\
+    "DELETE FROM " SEQ_SCHEMA_NAME " WHERE seq_id = ?"
+
 #define SELECT_CURS_TMPL\
     "SELECT seq_id, attributes FROM " SEQ_SCHEMA_NAME
 
@@ -548,10 +551,48 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
     return info.error_code;
 }
 
+static int _perform_delete( struct attribute_vtab *vtab, sqlite3_int64 rowid )
+{
+    char *sql;
+    sqlite3_stmt *stmt;
+    int status;
+
+    sql = sqlite3_mprintf( DELETE_TMPL, vtab->database_name,
+        vtab->table_name );
+
+    if(! sql) {
+        return SQLITE_NOMEM;
+    }
+
+    status = sqlite3_prepare_v2( vtab->db, sql, -1, &stmt, NULL );
+
+    sqlite3_free( sql );
+
+    if(status != SQLITE_OK) {
+        vtab->vtab.zErrMsg = sqlite3_mprintf( "%s",
+            sqlite3_errmsg( vtab->db ) );
+        return status;
+    }
+
+    sqlite3_bind_int64( stmt, 1, rowid );
+
+    status = sqlite3_step( stmt );
+
+    sqlite3_finalize( stmt );
+
+    if(status != SQLITE_DONE) {
+        return status;
+    }
+
+    return SQLITE_OK;
+}
+
 static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **argv, sqlite_int64 *rowid )
 {
+    struct attribute_vtab *vtab = (struct attribute_vtab *) _vtab;
+
     if(argc == 1) { /* DELETE */
-        _vtab->zErrMsg = sqlite3_mprintf( "%s", "deleting from the table is forbidden" );
+        return _perform_delete( vtab, sqlite3_value_int64( argv[0] ) );
     } else if(sqlite3_value_type(argv[0]) == SQLITE_NULL) { /* INSERT */
         int type_rowid;
         int type_id;
@@ -567,7 +608,7 @@ static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **arg
             *rowid = sqlite3_value_int64( argv[2] );
         }
 
-        return _perform_insert( (struct attribute_vtab *) _vtab, argc, argv, rowid );
+        return _perform_insert( vtab, argc, argv, rowid );
     } else { /* UPDATE */
         _vtab->zErrMsg = sqlite3_mprintf( "%s", "updating the table is forbidden" );
     }
