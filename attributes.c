@@ -530,7 +530,8 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
 
     if(status != SQLITE_DONE) {
         sqlite3_reset( vtab->insert_seq_stmt );
-        return SQLITE_ERROR;
+        vtab->vtab.zErrMsg = sqlite3_mprintf( "%s", sqlite3_errmsg( vtab->db ) );
+        return status;
     }
     *rowid = sqlite3_last_insert_rowid( vtab->db );
     sqlite3_reset( vtab->insert_seq_stmt );
