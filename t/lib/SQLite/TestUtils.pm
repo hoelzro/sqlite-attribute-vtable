@@ -12,7 +12,7 @@ my $SQLITE_TABLE     = qr/^"(\w+)"\."(\w+)"$/;
 
 our @EXPORT = qw(check_deps check_schema create_dbh form_attr_string
                  dump_tables create_attribute_table insert_rows
-                 check_sql dump_table);
+                 check_sql dump_table get_record_separator);
 
 sub check_deps {
     my $ok = eval {
@@ -255,6 +255,10 @@ sub check_sql {
     }
 
     is_deeply \@rows, $expected;
+}
+
+sub get_record_separator {
+    return $RECORD_SEPARATOR;
 }
 
 1;
