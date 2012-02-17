@@ -125,4 +125,25 @@ check_sql(
     }],
 );
 
+insert_rows $dbh, 'attributes', ({
+    ROWID => 15,
+    attributes => {
+        bar => 18,
+    },
+});
+
+is $dbh->last_insert_id(undef, undef, undef, undef), 15;
+
+check_sql(
+    dbh     => $dbh,
+    sql     => 'SELECT * FROM attributes WHERE id = 15',
+    ordered => 0,
+    rows    => [{
+        id         => 15,
+        attributes => {
+            bar => 18,
+        },
+    }],
+);
+
 done_testing;
