@@ -117,6 +117,11 @@ struct attribute_cursor {
     int eof;
 };
 
+#define CONTINUE 0
+#define BREAK    1
+
+typedef int (*kv_iter_cb)(const char *, size_t, const char *, size_t, void *);
+
 static int __unimplemented(struct attribute_vtab *vtab, const char *func_name)
 {
     vtab->vtab.zErrMsg = sqlite3_mprintf("function '%s' is not yet implemented", func_name);
@@ -161,6 +166,45 @@ static const char *extract_attribute_value(const char *attributes, const char *k
     } else {
         return NULL;
     }
+}
+
+static void iterate_over_kv_pairs( const char *attributes,
+    kv_iter_cb callback, void *udata )
+{
+    const char *key_endp;
+    int status;
+
+    while(key_endp = strchr( attributes, RECORD_SEPARATOR )) {
+        const char *key;
+        const char *value;
+        const char *value_endp;
+        size_t key_length;
+        size_t value_length;
+
+        value_endp = strchr( key_endp + 1, RECORD_SEPARATOR );
+
+        if(! value_endp) {
+            value_endp = key_endp + strlen(key_endp);
+        }
+
+        key          = attributes;
+        key_length   = key_endp - key;
+        value        = key_endp + 1;
+        value_length = value_endp - value;
+
+        status = callback( key, key_length, value, value_length, udata );
+
+        if(status == BREAK) {
+            break;
+        }
+
+        if(*value_endp == RECORD_SEPARATOR) {
+            attributes = value_endp + 1;
+        } else {
+            break;
+        }
+    }
+
 }
 
 static void sql_has_attr( sqlite3_context *ctx, int nargs,
@@ -439,11 +483,37 @@ static int attributes_destroy( sqlite3_vtab *_vtab )
     return return_status;
 }
 
+struct _insert_attribute_info {
+    sqlite3_stmt *stmt;
+    sqlite3_int64 rowid;
+    int error_code;
+};
+
+static int _insert_attributes( const char *key, size_t key_len,
+    const char *value, size_t value_len, void *udata )
+{
+    struct _insert_attribute_info *info = (struct _insert_attribute_info *) udata;
+
+    sqlite3_bind_int64( info->stmt, ATTR_SEQ_COL, info->rowid );
+    sqlite3_bind_text(  info->stmt, ATTR_KEY_COL, key,   key_len,   SQLITE_TRANSIENT );
+    sqlite3_bind_text(  info->stmt, ATTR_VAL_COL, value, value_len, SQLITE_TRANSIENT );
+
+    info->error_code = sqlite3_step( info->stmt );
+    sqlite3_reset( info->stmt );
+
+    if(info->error_code == SQLITE_DONE) {
+        return CONTINUE;
+    } else {
+        return BREAK;
+    }
+}
+
 static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value **argv, sqlite_int64 *rowid )
 {
     int status;
     const char *attributes;
     const char *key_endp;
+    struct _insert_attribute_info info;
 
     attributes = sqlite3_value_text( argv[3] );
 
@@ -458,42 +528,16 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
     *rowid = sqlite3_last_insert_rowid( vtab->db );
     sqlite3_reset( vtab->insert_seq_stmt );
 
-    while(key_endp = strchr( attributes, RECORD_SEPARATOR )) {
-        const char *key;
-        const char *value;
-        const char *value_endp;
-        size_t key_length;
-        size_t value_length;
+    info.stmt       = vtab->insert_attr_stmt;
+    info.rowid      = *rowid;
+    info.error_code = SQLITE_OK;
 
-        value_endp = strchr( key_endp + 1, RECORD_SEPARATOR );
+    iterate_over_kv_pairs( attributes, _insert_attributes, &info );
 
-        if(! value_endp) {
-            value_endp = key_endp + strlen(key_endp);
-        }
-
-        key          = attributes;
-        key_length   = key_endp - key;
-        value        = key_endp + 1;
-        value_length = value_endp - value;
-
-        sqlite3_bind_int64( vtab->insert_attr_stmt, ATTR_SEQ_COL, *rowid );
-        sqlite3_bind_text(  vtab->insert_attr_stmt, ATTR_KEY_COL, key,   key_length,   SQLITE_TRANSIENT );
-        sqlite3_bind_text(  vtab->insert_attr_stmt, ATTR_VAL_COL, value, value_length, SQLITE_TRANSIENT );
-
-        status = sqlite3_step( vtab->insert_attr_stmt );
-        sqlite3_reset( vtab->insert_attr_stmt );
-        if(status != SQLITE_DONE) {
-            return status;
-        }
-
-        if(*value_endp == RECORD_SEPARATOR) {
-            attributes = value_endp + 1;
-        } else {
-            break;
-        }
+    if(info.error_code == SQLITE_DONE) {
+        return SQLITE_OK;
     }
-
-    return SQLITE_OK;
+    return SQLITE_DONE;
 }
 
 static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **argv, sqlite_int64 *rowid )
