@@ -54,9 +54,8 @@ SQLITE_EXTENSION_INIT1;
     "  attr_value TEXT    NOT NULL "\
     ")"
 
-/* how do we create an index on a table in another DB? */
 #define ATTR_INDEX_TMPL\
-    "CREATE UNIQUE INDEX some_index_name ON \"%w_Attributes\" "\
+    "CREATE UNIQUE INDEX \"%w\".\"%w_attr_index\" ON \"%w_Attributes\" "\
     " ( attr_name, seq_id ) "
 
 #define INSERT_SEQ_TMPL\
@@ -325,7 +324,8 @@ static int attributes_create( sqlite3 *db, void *udp, int argc,
 
     sqlite3_free( sql );
 
-    sql = sqlite3_mprintf( ATTR_INDEX_TMPL, table_name);
+    sql = sqlite3_mprintf( ATTR_INDEX_TMPL, database_name, table_name,
+        table_name);
 
     if(! sql) {
         goto error_handler;
