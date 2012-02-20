@@ -140,6 +140,12 @@ struct attribute_cursor {
 
 typedef int (*kv_iter_cb)(const char *, size_t, const char *, size_t, void *);
 
+static int ERROR(struct attribute_vtab *vtab, int status)
+{
+    vtab->vtab.zErrMsg = sqlite3_mprintf( "%s", sqlite3_errmsg( vtab->db ) );
+    return status;
+}
+
 static int __unimplemented(struct attribute_vtab *vtab, const char *func_name)
 {
     vtab->vtab.zErrMsg = sqlite3_mprintf("function '%s' is not yet implemented", func_name);
