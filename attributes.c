@@ -784,8 +784,14 @@ static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **arg
             *rowid = 0;
         } else if(type_rowid != SQLITE_NULL) {
             *rowid = sqlite3_value_int64( argv[UPDATE_ARG_ROWID] );
+            if(*rowid == 0) { /* uh-oh */
+                return SQLITE_MISMATCH;
+            }
         } else { /* type_id != SQLITE_NULL */
             *rowid = sqlite3_value_int64( argv[UPDATE_ARG_ID] );
+            if(*rowid == 0) { /* uh-oh */
+                return SQLITE_MISMATCH;
+            }
         }
 
         return _perform_insert( vtab, argc, argv, rowid );
