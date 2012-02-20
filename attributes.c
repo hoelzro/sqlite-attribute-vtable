@@ -146,6 +146,81 @@ static int __unimplemented(struct attribute_vtab *vtab, const char *func_name)
     return SQLITE_ERROR;
 }
 
+static char *_allocate_sequence_schema_sql(const char *database_name,
+    const char *table_name)
+{
+    return sqlite3_mprintf( SEQ_SCHEMA_TMPL, database_name, table_name );
+}
+
+static char *_allocate_attribute_schema_sql(const char *database_name,
+    const char *table_name)
+{
+    return sqlite3_mprintf( ATTR_SCHEMA_TMPL, database_name, table_name );
+}
+
+static char *_allocate_attribute_index_sql(const char *database_name,
+    const char *table_name)
+{
+    return sqlite3_mprintf( ATTR_INDEX_TMPL, database_name, table_name,
+        table_name );
+}
+
+static char *_allocate_insert_sequence_sql(const char *database_name,
+    const char *table_name)
+{
+    return sqlite3_mprintf( INSERT_SEQ_TMPL, database_name, table_name );
+}
+
+static char *_allocate_insert_attribute_sql(const char *database_name,
+    const char *table_name)
+{
+    return sqlite3_mprintf( INSERT_ATTR_TMPL, database_name, table_name );
+}
+
+static char *_allocate_delete_sequence_sql(const char *database_name,
+    const char *table_name)
+{
+    return sqlite3_mprintf( DELETE_SEQ_TMPL, database_name, table_name );
+}
+
+static char *_allocate_delete_attribute_sql(const char *database_name,
+    const char *table_name)
+{
+    return sqlite3_mprintf( DELETE_ATTR_TMPL, database_name, table_name );
+}
+
+static char *_allocate_select_cursor_sql(const char *database_name,
+    const char *table_name, const char *match)
+{
+    if(match) {
+        if(strchr(match, RECORD_SEPARATOR)) {
+            return sqlite3_mprintf( SELECT_CURS_WITH_KEY_VALUE_TMPL,
+                database_name, table_name,
+                database_name, table_name);
+        } else {
+            return sqlite3_mprintf( SELECT_CURS_WITH_KEY_TMPL,
+                database_name, table_name,
+                database_name, table_name);
+        }
+    } else {
+        return sqlite3_mprintf( SELECT_CURS_TMPL, database_name, table_name );
+    }
+}
+
+static char *_allocate_drop_sequence_schema_sql(const char *database_name,
+    const char *table_name)
+{
+    return sqlite3_mprintf( "DROP TABLE " SEQ_SCHEMA_NAME, database_name,
+        table_name );
+}
+
+static char *_allocate_drop_attribute_schema_sql(const char *database_name,
+    const char *table_name)
+{
+    return sqlite3_mprintf( "DROP TABLE " ATTR_SCHEMA_NAME, database_name,
+        table_name );
+}
+
 /* key-value pairs are separated by RECORD_SEPARATOR, and each member of the pair
  * is also separated by RECORD_SEPARATOR.  So the layout of attributes looks kind of
  * like this:
@@ -261,8 +336,7 @@ static int _initialize_statements( struct attribute_vtab *vtab )
     char *sql;
     int status;
 
-    sql = sqlite3_mprintf( INSERT_SEQ_TMPL, vtab->database_name,
-        vtab->table_name );
+    sql = _allocate_insert_sequence_sql( vtab->database_name, vtab->table_name );
 
     if(! sql) {
         /* our caller handles the mess */
@@ -278,7 +352,7 @@ static int _initialize_statements( struct attribute_vtab *vtab )
         return status;
     }
 
-    sql = sqlite3_mprintf( INSERT_ATTR_TMPL, vtab->database_name,
+    sql = _allocate_insert_attribute_sql( vtab->database_name,
         vtab->table_name );
 
     status = sqlite3_prepare_v2( vtab->db, sql, -1, &(vtab->insert_attr_stmt), NULL );
@@ -370,8 +444,7 @@ static int attributes_create( sqlite3 *db, void *udp, int argc,
         goto error_handler;
     }
 
-    sql = sqlite3_mprintf( SEQ_SCHEMA_TMPL, database_name,
-        table_name );
+    sql = _allocate_sequence_schema_sql( database_name, table_name );
 
     if(! sql) {
         status = SQLITE_NOMEM;
@@ -386,8 +459,7 @@ static int attributes_create( sqlite3 *db, void *udp, int argc,
 
     sqlite3_free( sql );
 
-    sql = sqlite3_mprintf( ATTR_SCHEMA_TMPL, database_name,
-        table_name, table_name );
+    sql = _allocate_attribute_schema_sql( database_name, table_name );
 
     if(! sql) {
         status = SQLITE_NOMEM;
@@ -402,8 +474,7 @@ static int attributes_create( sqlite3 *db, void *udp, int argc,
 
     sqlite3_free( sql );
 
-    sql = sqlite3_mprintf( ATTR_INDEX_TMPL, database_name, table_name,
-        table_name);
+    sql = _allocate_attribute_index_sql( database_name, table_name );
 
     if(! sql) {
         goto error_handler;
@@ -466,8 +537,7 @@ static int attributes_destroy( sqlite3_vtab *_vtab )
     database_name = vtab->database_name;
     table_name    = vtab->table_name;
 
-    sql = sqlite3_mprintf( "DROP TABLE " SEQ_SCHEMA_NAME, database_name,
-        table_name );
+    sql = _allocate_drop_sequence_schema_sql( database_name, table_name );
 
     if(! sql ) {
         return_status = SQLITE_NOMEM;
@@ -479,8 +549,7 @@ static int attributes_destroy( sqlite3_vtab *_vtab )
 
         sqlite3_free( sql );
 
-        sql = sqlite3_mprintf( "DROP TABLE " ATTR_SCHEMA_NAME, database_name,
-            table_name );
+        sql = _allocate_drop_attribute_schema_sql( database_name, table_name );
 
         if(! sql) {
             return_status = SQLITE_NOMEM;
@@ -572,7 +641,7 @@ static int _perform_delete( struct attribute_vtab *vtab, sqlite3_int64 rowid )
     sqlite3_stmt *stmt;
     int status;
 
-    sql = sqlite3_mprintf( DELETE_SEQ_TMPL, vtab->database_name,
+    sql = _allocate_delete_sequence_sql( vtab->database_name,
         vtab->table_name );
 
     if(! sql) {
@@ -599,7 +668,7 @@ static int _perform_delete( struct attribute_vtab *vtab, sqlite3_int64 rowid )
         return status;
     }
 
-    sql = sqlite3_mprintf( DELETE_ATTR_TMPL, vtab->database_name,
+    sql = _allocate_delete_attribute_sql( vtab->database_name,
         vtab->table_name );
 
     if(! sql) {
@@ -745,17 +814,11 @@ static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
     if(idx_num == ATTR_NAME_INDEX) {
         const char *match = sqlite3_value_text( argv[0] );
 
-        if(strchr(match, RECORD_SEPARATOR)) {
-            sql = sqlite3_mprintf( SELECT_CURS_WITH_KEY_VALUE_TMPL,
-                vtab->database_name, vtab->table_name,
-                vtab->database_name, vtab->table_name);
-        } else {
-            sql = sqlite3_mprintf( SELECT_CURS_WITH_KEY_TMPL,
-                vtab->database_name, vtab->table_name,
-                vtab->database_name, vtab->table_name);
-        }
+        sql = _allocate_select_cursor_sql( vtab->database_name,
+            vtab->table_name, match);
     } else {
-        sql = sqlite3_mprintf( SELECT_CURS_TMPL, vtab->database_name, vtab->table_name );
+        sql = _allocate_select_cursor_sql( vtab->database_name,
+            vtab->table_name, NULL );
     }
 
     if(! sql) {
