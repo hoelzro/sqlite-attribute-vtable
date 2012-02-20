@@ -647,7 +647,17 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
     const char *key_endp;
     struct _insert_attribute_info info;
 
+    if(sqlite3_value_type( argv[UPDATE_ARG_ATTRS] ) != SQLITE_TEXT) {
+        vtab->vtab.zErrMsg = sqlite3_mprintf( "%s", "attributes must be an attribute string" );
+        return SQLITE_ERROR;
+    }
+
     attributes = sqlite3_value_text( argv[UPDATE_ARG_ATTRS] );
+
+    if(! is_attribute_string( attributes )) {
+        vtab->vtab.zErrMsg = sqlite3_mprintf( "%s", "attributes must be an attribute string" );
+        return SQLITE_ERROR;
+    }
 
     if(*rowid == 0) { /* we provide our own ROWID */
         status = sqlite3_bind_null( vtab->insert_seq_stmt, INSERT_SEQ_ID_COL );
