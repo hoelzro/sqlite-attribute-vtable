@@ -134,6 +134,7 @@ struct attribute_cursor {
     int eof;
 };
 
+/* Constants for use in iterate_over_kv_pairs */
 #define CONTINUE 0
 #define BREAK    1
 
@@ -145,6 +146,12 @@ static int __unimplemented(struct attribute_vtab *vtab, const char *func_name)
     return SQLITE_ERROR;
 }
 
+/* key-value pairs are separated by RECORD_SEPARATOR, and each member of the pair
+ * is also separated by RECORD_SEPARATOR.  So the layout of attributes looks kind of
+ * like this:
+ *
+ * key1 RS value1 RS key2 RS value2 RS key3 RS value3
+ */
 static const char *extract_attribute_value(const char *attributes, const char *key, size_t *value_len)
 {
     char *needle;
@@ -176,7 +183,7 @@ static const char *extract_attribute_value(const char *attributes, const char *k
 
         attr_end = strchr( attr_location, RECORD_SEPARATOR );
         if(! attr_end) {
-            attr_end = attr_location + strlen( attr_location );
+            attr_end = attr_location + strlen( attr_location ); /* end of string */
         }
         *value_len = attr_end - attr_location;
         return attr_location;
@@ -201,7 +208,7 @@ static void iterate_over_kv_pairs( const char *attributes,
         value_endp = strchr( key_endp + 1, RECORD_SEPARATOR );
 
         if(! value_endp) {
-            value_endp = key_endp + strlen(key_endp);
+            value_endp = key_endp + strlen(key_endp); /* end of string */
         }
 
         key          = attributes;
