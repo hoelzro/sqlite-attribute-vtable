@@ -998,7 +998,8 @@ static void _attribute_match_func(sqlite3_context *ctx, int nargs, sqlite3_value
 
     if(rs_location = strchr(query, RECORD_SEPARATOR)) { /* searching for a key value pair */
         char *key = sqlite3_malloc( rs_location - query + 1 ); /* one for the NULL */
-        strncpy( key, query, rs_location - query );
+        memcpy( key, query, rs_location - query );
+        key[rs_location - query] = '\0';
 
         attr_value = extract_attribute_value( attributes, key, &value_len );
 
