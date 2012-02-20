@@ -214,11 +214,6 @@ static void iterate_over_kv_pairs( const char *attributes,
 
 }
 
-static void sql_has_attr( sqlite3_context *ctx, int nargs,
-    sqlite3_value **values )
-{
-}
-
 static void sql_get_attr( sqlite3_context *ctx, int nargs,
     sqlite3_value **values )
 {
@@ -883,9 +878,6 @@ int sql_attr_init( sqlite3 *db, char **error,
     const sqlite3_api_routines *api )
 {
     SQLITE_EXTENSION_INIT2(api);
-
-    sqlite3_create_function( db, "has_attr", 2, SQLITE_UTF8, NULL,
-        sql_has_attr, NULL, NULL );
 
     sqlite3_create_function( db, "get_attr", 2, SQLITE_UTF8, NULL,
         sql_get_attr, NULL, NULL );
