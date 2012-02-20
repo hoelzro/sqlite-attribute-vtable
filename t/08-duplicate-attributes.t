@@ -7,8 +7,6 @@ use SQLite::TestUtils;
 
 check_deps;
 
-my $RS = get_record_separator();
-
 my $dbh = create_dbh;
 
 create_attribute_table(
