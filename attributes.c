@@ -314,6 +314,16 @@ static void sql_get_attr( sqlite3_context *ctx, int nargs,
     const char *attr_value;
     size_t value_length;
 
+    if(sqlite3_value_type( values[0] ) != SQLITE_TEXT) {
+        sqlite3_result_error( ctx, "attribute operand must be a string", -1 );
+        return;
+    }
+
+    if(sqlite3_value_type( values[1] ) == SQLITE_NULL) {
+        sqlite3_result_error( ctx, "query operand must not be NULL", -1 );
+        return;
+    }
+
     attributes = sqlite3_value_text( values[0] );
     attr_name  = sqlite3_value_text( values[1] );
     attr_value = extract_attribute_value( attributes, attr_name,
