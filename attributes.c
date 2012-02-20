@@ -695,6 +695,11 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
         return SQLITE_OK;
     }
     if(info.error_code != SQLITE_OK) {
+        if(info.error_code == SQLITE_CONSTRAINT) {
+            /* we're going to assume it's a duplicate attribute name */
+            vtab->vtab.zErrMsg = sqlite3_mprintf( "%s", "duplicate attributes are forbidden" );
+            return info.error_code;
+        }
         return ERROR( vtab, info.error_code );
     }
     return info.error_code;
