@@ -87,16 +87,26 @@ SQLITE_EXTENSION_INIT1;
 #define SCHEMA_SUFFIX_SIZE            (sizeof(SCHEMA_SUFFIX) - 1)
 #define DEFAULT_ATTRIBUTE_COLUMN_SIZE (sizeof(DEFAULT_ATTRIBUTE_COLUMN) - 1)
 
-#define SEQ_ATTR_COL 1
-#define SEQ_ID_COL   2
+#define INSERT_SEQ_ATTR_COL 1
+#define INSERT_SEQ_ID_COL   2
 
-#define ATTR_SEQ_COL 1
-#define ATTR_KEY_COL 2
-#define ATTR_VAL_COL 3
+#define INSERT_ATTR_SEQ_COL 1
+#define INSERT_ATTR_KEY_COL 2
+#define INSERT_ATTR_VAL_COL 3
+
+#define UPDATE_ARG_ROWID 1
+#define UPDATE_ARG_ID    2
+#define UPDATE_ARG_ATTRS 3
+
+#define DELETE_SEQ_ARG_ROWID  1
+#define DELETE_ATTR_ARG_ROWID 1
 
 #define CURS_SEQ_COL 0
 
 #define ATTR_NAME_INDEX 1
+
+#define SCHEMA_ID_COL   0
+#define SCHEMA_ATTR_COL 1
 
 #define UNIMPLD(vtab)\
     __unimplemented(vtab, __FUNCTION__)
@@ -496,9 +506,9 @@ static int _insert_attributes( const char *key, size_t key_len,
 {
     struct _insert_attribute_info *info = (struct _insert_attribute_info *) udata;
 
-    sqlite3_bind_int64( info->stmt, ATTR_SEQ_COL, info->rowid );
-    sqlite3_bind_text(  info->stmt, ATTR_KEY_COL, key,   key_len,   SQLITE_TRANSIENT );
-    sqlite3_bind_text(  info->stmt, ATTR_VAL_COL, value, value_len, SQLITE_TRANSIENT );
+    sqlite3_bind_int64( info->stmt, INSERT_ATTR_SEQ_COL, info->rowid );
+    sqlite3_bind_text(  info->stmt, INSERT_ATTR_KEY_COL, key,   key_len,   SQLITE_TRANSIENT );
+    sqlite3_bind_text(  info->stmt, INSERT_ATTR_VAL_COL, value, value_len, SQLITE_TRANSIENT );
 
     info->error_code = sqlite3_step( info->stmt );
     sqlite3_reset( info->stmt );
@@ -517,16 +527,16 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
     const char *key_endp;
     struct _insert_attribute_info info;
 
-    attributes = sqlite3_value_text( argv[3] );
+    attributes = sqlite3_value_text( argv[UPDATE_ARG_ATTRS] );
 
     if(*rowid == 0) { /* we provide our own ROWID */
-        sqlite3_bind_null( vtab->insert_seq_stmt, SEQ_ID_COL );
+        sqlite3_bind_null( vtab->insert_seq_stmt, INSERT_SEQ_ID_COL );
     } else {
-        sqlite3_bind_int64( vtab->insert_seq_stmt, SEQ_ID_COL, *rowid );
+        sqlite3_bind_int64( vtab->insert_seq_stmt, INSERT_SEQ_ID_COL, *rowid );
     }
 
     /* XXX bind_value? */
-    sqlite3_bind_text( vtab->insert_seq_stmt, SEQ_ATTR_COL, attributes, -1, SQLITE_TRANSIENT );
+    sqlite3_bind_text( vtab->insert_seq_stmt, INSERT_SEQ_ATTR_COL, attributes, -1, SQLITE_TRANSIENT );
     status = sqlite3_step( vtab->insert_seq_stmt );
 
     if(status != SQLITE_DONE) {
@@ -572,7 +582,7 @@ static int _perform_delete( struct attribute_vtab *vtab, sqlite3_int64 rowid )
         return status;
     }
 
-    sqlite3_bind_int64( stmt, 1, rowid );
+    sqlite3_bind_int64( stmt, DELETE_SEQ_ARG_ROWID, rowid );
 
     status = sqlite3_step( stmt );
 
@@ -599,7 +609,7 @@ static int _perform_delete( struct attribute_vtab *vtab, sqlite3_int64 rowid )
         return status;
     }
 
-    sqlite3_bind_int64( stmt, 1, rowid );
+    sqlite3_bind_int64( stmt, DELETE_ATTR_ARG_ROWID, rowid );
 
     status = sqlite3_step( stmt );
 
@@ -622,15 +632,15 @@ static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **arg
         int type_rowid;
         int type_id;
 
-        type_rowid = sqlite3_value_type(argv[1]);
-        type_id    = sqlite3_value_type(argv[2]);
+        type_rowid = sqlite3_value_type(argv[UPDATE_ARG_ROWID]);
+        type_id    = sqlite3_value_type(argv[UPDATE_ARG_ID]);
 
         if(type_rowid == SQLITE_NULL && type_id == SQLITE_NULL) {
             *rowid = 0;
         } else if(type_rowid != SQLITE_NULL) {
-            *rowid = sqlite3_value_int64( argv[1] );
+            *rowid = sqlite3_value_int64( argv[UPDATE_ARG_ROWID] );
         } else { /* type_id != SQLITE_NULL */
-            *rowid = sqlite3_value_int64( argv[2] );
+            *rowid = sqlite3_value_int64( argv[UPDATE_ARG_ID] );
         }
 
         return _perform_insert( vtab, argc, argv, rowid );
@@ -656,8 +666,7 @@ static int attributes_best_index( sqlite3_vtab *_vtab, sqlite3_index_info *index
     for(i = 0; i < index_info->nConstraint; i++) {
         struct sqlite3_index_constraint *constraint = index_info->aConstraint + i;
 
-        /* XXX not sure if SEQ_ATTR_COL is the best choice here... */
-        if(constraint->iColumn == SEQ_ATTR_COL && constraint->op == SQLITE_INDEX_CONSTRAINT_MATCH) {
+        if(constraint->iColumn == SCHEMA_ATTR_COL && constraint->op == SQLITE_INDEX_CONSTRAINT_MATCH) {
             index_info->aConstraintUsage[i].argvIndex = 1;
             index_info->aConstraintUsage[i].omit      = 1 ;
             index_info->idxNum                        = ATTR_NAME_INDEX;
