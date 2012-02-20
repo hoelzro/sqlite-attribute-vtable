@@ -177,11 +177,21 @@ sub stringify_rows {
     my ( $rows ) = @_;
 
     foreach my $row (@$rows) {
-        foreach my $value (values %$row) {
-            if(ref($value) eq 'HASH') {
-                $value = form_attr_string(%$value);
-            } elsif(ref($value) eq 'ARRAY') {
-                $value = form_attr_string(@$value);
+        if(ref($row) eq 'HASH') {
+            foreach my $value (values %$row) {
+                if(ref($value) eq 'HASH') {
+                    $value = form_attr_string(%$value);
+                } elsif(ref($value) eq 'ARRAY') {
+                    $value = form_attr_string(@$value);
+                }
+            }
+        } else { # we'll assume it's an ARRAY
+            foreach my $value (@$row) {
+                if(ref($value) eq 'HASH') {
+                    $value = form_attr_string(%$value);
+                } elsif(ref($value) eq 'ARRAY') {
+                    $value = form_attr_string(@$value);
+                }
             }
         }
     }
@@ -221,11 +231,17 @@ sub make_row_sortable {
 sub reorder_rows {
     my @rows = @_;
 
-    my @keys = sort keys %{ $rows[0] };
+    if(ref($rows[0]) eq 'HASH') {
+        my @keys = sort keys %{ $rows[0] };
 
-    return sort {
-        make_row_sortable($a, @keys) cmp make_row_sortable($b, @keys)
-    } @rows;
+        return sort {
+            make_row_sortable($a, @keys) cmp make_row_sortable($b, @keys)
+        } @rows;
+    } else { # we'll assume it's an ARRAY
+        return sort {
+            join($RECORD_SEPARATOR, @$a) cmp join($RECORD_SEPARATOR, @$b)
+        } @rows;
+    }
 }
 
 sub check_sql {
@@ -248,8 +264,14 @@ sub check_sql {
 
         my @rows;
 
-        while(my $row = $sth->fetchrow_hashref) {
-            push @rows, $row;
+        if(ref($expected->[0]) eq 'HASH') {
+            while(my $row = $sth->fetchrow_hashref) {
+                push @rows, $row;
+            }
+        } else { # we'll assume it's an ARRAY
+            while(my $row = $sth->fetch) {
+                push @rows, [ @$row ];
+            }
         }
 
         unless($ordered) {
