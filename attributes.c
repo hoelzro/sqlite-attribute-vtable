@@ -430,6 +430,8 @@ static int _init_vtab( sqlite3 *db, void *udp, int argc,
     sqlite3_free(sql);
 
     if(status != SQLITE_OK) {
+        ERROR( avtab, status );
+        *errMsg = avtab->vtab.zErrMsg;
         attributes_disconnect((sqlite3_vtab *) avtab);
         return status;
     }
@@ -438,6 +440,8 @@ static int _init_vtab( sqlite3 *db, void *udp, int argc,
         status = _initialize_statements( avtab );
 
         if(status != SQLITE_OK) {
+            ERROR( avtab, status );
+            *errMsg = avtab->vtab.zErrMsg;
             attributes_disconnect((sqlite3_vtab *) avtab);
             return status;
         }
@@ -529,6 +533,7 @@ error_handler:
     if(*vtab) {
         attributes_destroy( *vtab );
     }
+    *errMsg = sqlite3_mprintf( "%s", sqlite3_errmsg( db ) );
 done:
     return status;
 }
@@ -647,21 +652,20 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
     }
 
     if(status != SQLITE_OK) {
-        return status;
+        return ERROR( vtab, status );
     }
 
     /* XXX bind_value? */
     status = sqlite3_bind_text( vtab->insert_seq_stmt, INSERT_SEQ_ATTR_COL,
         attributes, -1, SQLITE_TRANSIENT );
     if(status != SQLITE_OK) {
-        return status;
+        return ERROR( vtab, status );
     }
     status = sqlite3_step( vtab->insert_seq_stmt );
 
     if(status != SQLITE_DONE) {
         sqlite3_reset( vtab->insert_seq_stmt );
-        vtab->vtab.zErrMsg = sqlite3_mprintf( "%s", sqlite3_errmsg( vtab->db ) );
-        return status;
+        return ERROR( vtab, status );
     }
     *rowid = sqlite3_last_insert_rowid( vtab->db );
     sqlite3_reset( vtab->insert_seq_stmt );
@@ -674,6 +678,9 @@ static int _perform_insert( struct attribute_vtab *vtab, int argc, sqlite3_value
 
     if(info.error_code == SQLITE_DONE) {
         return SQLITE_OK;
+    }
+    if(info.error_code != SQLITE_OK) {
+        return ERROR( vtab, info.error_code );
     }
     return info.error_code;
 }
@@ -696,15 +703,13 @@ static int _perform_delete( struct attribute_vtab *vtab, sqlite3_int64 rowid )
     sqlite3_free( sql );
 
     if(status != SQLITE_OK) {
-        vtab->vtab.zErrMsg = sqlite3_mprintf( "%s",
-            sqlite3_errmsg( vtab->db ) );
-        return status;
+        return ERROR( vtab, status );
     }
 
     status = sqlite3_bind_int64( stmt, DELETE_SEQ_ARG_ROWID, rowid );
 
     if(status != SQLITE_OK) {
-        return status;
+        return ERROR( vtab, status );
     }
 
     status = sqlite3_step( stmt );
@@ -712,7 +717,7 @@ static int _perform_delete( struct attribute_vtab *vtab, sqlite3_int64 rowid )
     sqlite3_finalize( stmt );
 
     if(status != SQLITE_DONE) {
-        return status;
+        return ERROR( vtab, status );
     }
 
     sql = _allocate_delete_attribute_sql( vtab->database_name,
@@ -727,15 +732,13 @@ static int _perform_delete( struct attribute_vtab *vtab, sqlite3_int64 rowid )
     sqlite3_free( sql );
 
     if(status != SQLITE_OK) {
-        vtab->vtab.zErrMsg = sqlite3_mprintf( "%s",
-            sqlite3_errmsg( vtab->db ) );
-        return status;
+        return ERROR( vtab, status );
     }
 
     status = sqlite3_bind_int64( stmt, DELETE_ATTR_ARG_ROWID, rowid );
 
     if(status != SQLITE_OK) {
-        return status;
+        return ERROR( vtab, status );
     }
 
     status = sqlite3_step( stmt );
@@ -743,7 +746,7 @@ static int _perform_delete( struct attribute_vtab *vtab, sqlite3_int64 rowid )
     sqlite3_finalize( stmt );
 
     if(status != SQLITE_DONE) {
-        return status;
+        return ERROR( vtab, status );
     }
 
     return SQLITE_OK;
@@ -778,7 +781,7 @@ static int attributes_update( sqlite3_vtab *_vtab, int argc, sqlite3_value **arg
         status = _perform_delete( vtab, *rowid );
         if(status != SQLITE_OK) {
             /* XXX rollback transaction? */
-            return status;
+            return ERROR( vtab, status );
         }
         return _perform_insert( vtab, argc, argv, rowid );
     }
@@ -851,7 +854,11 @@ static int attributes_get_row( struct attribute_cursor *cursor )
     sqlite3_reset( cursor->stmt );
     cursor->eof = 1;
 
-    return ( status == SQLITE_DONE ? SQLITE_OK : status );
+    if(status != SQLITE_DONE && status != SQLITE_OK) {
+        return ERROR( (struct attribute_vtab *) cursor->cursor.pVtab, status );
+    }
+
+    return SQLITE_OK;
 }
 
 static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
@@ -881,7 +888,7 @@ static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
     sqlite3_free( sql );
 
     if(status != SQLITE_OK) {
-        return status;
+        return ERROR( vtab, status );
     }
     c->eof = 0;
 
@@ -898,7 +905,7 @@ static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
             status = sqlite3_bind_text( c->stmt, 1, key, value - key, SQLITE_TRANSIENT );
 
             if(status != SQLITE_OK) {
-                return status;
+                return ERROR( vtab, status );
             }
 
             value++;
@@ -906,14 +913,14 @@ static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
             status = sqlite3_bind_text( c->stmt, 2, value, -1, SQLITE_TRANSIENT );
 
             if(status != SQLITE_OK) {
-                return status;
+                return ERROR( vtab, status );
             }
         } else {
             /* XXX bind_value? */
             status = sqlite3_bind_text( c->stmt, 1, match, -1, SQLITE_TRANSIENT );
 
             if(status != SQLITE_OK) {
-                return status;
+                return ERROR( vtab, status );
             }
         }
     }
