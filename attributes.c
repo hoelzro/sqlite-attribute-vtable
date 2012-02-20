@@ -704,7 +704,7 @@ static int attributes_open_cursor( sqlite3_vtab *_vtab, sqlite3_vtab_cursor **cu
     return SQLITE_OK;
 }
 
-static int attributes_close_curor( sqlite3_vtab_cursor *_cursor )
+static int attributes_close_cursor( sqlite3_vtab_cursor *_cursor )
 {
     struct attribute_cursor *c = (struct attribute_cursor *) _cursor;
 
@@ -881,7 +881,7 @@ static sqlite3_module module_definition = {
     .xBestIndex    = attributes_best_index,
     .xRename       = attributes_rename,
     .xOpen         = attributes_open_cursor,
-    .xClose        = attributes_close_curor,
+    .xClose        = attributes_close_cursor,
     .xFilter       = attributes_filter,
     .xNext         = attributes_next,
     .xEof          = attributes_eof,
