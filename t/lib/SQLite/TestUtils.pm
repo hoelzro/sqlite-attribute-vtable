@@ -180,6 +180,8 @@ sub stringify_rows {
         foreach my $value (values %$row) {
             if(ref($value) eq 'HASH') {
                 $value = form_attr_string(%$value);
+            } elsif(ref($value) eq 'ARRAY') {
+                $value = form_attr_string(@$value);
             }
         }
     }
