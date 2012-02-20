@@ -152,6 +152,11 @@ static int __unimplemented(struct attribute_vtab *vtab, const char *func_name)
     return SQLITE_ERROR;
 }
 
+static int is_attribute_string(const char *s)
+{
+    return strchr( s, RECORD_SEPARATOR ) != NULL;
+}
+
 static char *_allocate_sequence_schema_sql(const char *database_name,
     const char *table_name)
 {
@@ -199,7 +204,7 @@ static char *_allocate_select_cursor_sql(const char *database_name,
     const char *table_name, const char *match)
 {
     if(match) {
-        if(strchr(match, RECORD_SEPARATOR)) {
+        if(is_attribute_string(match)) {
             return sqlite3_mprintf( SELECT_CURS_WITH_KEY_VALUE_TMPL,
                 database_name, table_name,
                 database_name, table_name);
@@ -895,7 +900,7 @@ static int attributes_filter( sqlite3_vtab_cursor *_cursor, int idx_num,
     if(idx_num == ATTR_NAME_INDEX) {
         const char *match = sqlite3_value_text( argv[0] );
 
-        if(strchr(match, RECORD_SEPARATOR)) {
+        if(is_attribute_string(match)) {
             const char *key;
             const char *value;
 
