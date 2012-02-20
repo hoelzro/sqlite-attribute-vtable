@@ -1005,7 +1005,8 @@ static void _attribute_match_func(sqlite3_context *ctx, int nargs, sqlite3_value
 
         sqlite3_free( key );
 
-        sqlite3_result_int( ctx, !strncmp( rs_location + 1, attr_value, value_len ) );
+        sqlite3_result_int( ctx, attr_value &&
+            !strncmp( rs_location + 1, attr_value, value_len ) );
     } else { /* searching for whether or not a key is present */
         attr_value = extract_attribute_value( attributes, query, &value_len );
 
