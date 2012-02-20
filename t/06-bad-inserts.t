@@ -39,17 +39,6 @@ NON_ATTRIBUTES_ATTRIBUTES: {
     ok !$ok, q{inserting a string without a record separator as a row's attributes should fail};
 }
 
-NULL_ROWID: {
-    $ok = insert_rows $dbh, 'attributes', ({
-        ROWID      => undef,
-        attributes => {
-            foo => 'bar',
-        },
-    });
-
-    ok !$ok, q{inserting a NULL ROWID should fail};
-}
-
 TEXT_ROWID: {
     $ok = insert_rows $dbh, 'attributes', ({
         ROWID      => 'foo',
@@ -59,17 +48,6 @@ TEXT_ROWID: {
     });
 
     ok !$ok, q{inserting a TEXT ROWID should fail};
-}
-
-NULL_ID: {
-    $ok = insert_rows $dbh, 'attributes', ({
-        id         => undef,
-        attributes => {
-            foo => 'bar',
-        },
-    });
-
-    ok !$ok, q{inserting a NULL id should fail};
 }
 
 TEXT_ID: {
