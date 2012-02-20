@@ -142,7 +142,7 @@ static const char *extract_attribute_value(const char *attributes, const char *k
     size_t key_len;
 
     key_len = strlen( key );
-    needle  = sqlite3_malloc( key_len + 2 ); /* one for NULL, one for
+    needle  = sqlite3_malloc( key_len + 3 ); /* one for NULL, one for
                                                 record separator */
 
     needle[0] = RECORD_SEPARATOR;
