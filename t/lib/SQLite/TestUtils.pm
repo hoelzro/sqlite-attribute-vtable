@@ -236,25 +236,40 @@ sub check_sql {
     my $ordered  = exists $options{'ordered'} ? $options{'ordered'} : 1;
     my $expected = $options{'rows'};
 
-    local $dbh->{'RaiseError'} = 1;
+    if($expected) {
+        local $dbh->{'RaiseError'} = 1;
 
-    stringify_rows($expected);
+        stringify_rows($expected);
 
-    my $sth = $dbh->prepare($sql);
-    $sth->execute;
+        my $sth = $dbh->prepare($sql);
+        $sth->execute;
 
-    my @rows;
+        my @rows;
 
-    while(my $row = $sth->fetchrow_hashref) {
-        push @rows, $row;
+        while(my $row = $sth->fetchrow_hashref) {
+            push @rows, $row;
+        }
+
+        unless($ordered) {
+            @rows      = reorder_rows(@rows);
+            @$expected = reorder_rows(@$expected);
+        }
+
+        is_deeply \@rows, $expected;
+    } else {
+        local $dbh->{'RaiseError'} = 0;
+
+        my $expected_error = $options{'error'};
+
+        my $sth = $dbh->prepare($sql);
+        my $ok = $sth->execute;
+
+        if($ok) {
+            fail 'statement was expected to fail';
+        } else {
+            like $sth->errstr, $expected_error;
+        }
     }
-
-    unless($ordered) {
-        @rows      = reorder_rows(@rows);
-        @$expected = reorder_rows(@$expected);
-    }
-
-    is_deeply \@rows, $expected;
 }
 
 sub get_record_separator {
