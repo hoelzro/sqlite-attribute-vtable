@@ -7,8 +7,6 @@ use SQLite::TestUtils;
 
 check_deps;
 
-plan tests => 1;
-
 my $dbh = create_dbh(no_load => 1);
 
 my $ok = do {
@@ -20,3 +18,5 @@ my $ok = do {
 ok($ok, 'attribute extension should successfully load') or diag($dbh->errstr);
 
 $dbh->disconnect;
+
+done_testing;

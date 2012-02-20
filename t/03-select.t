@@ -7,8 +7,6 @@ use SQLite::TestUtils;
 
 check_deps;
 
-plan tests => 3;
-
 my $ok;
 my $dbh = create_dbh;
 
@@ -51,3 +49,5 @@ SELECT_DATA: {
         ok !defined($row);
     };
 }
+
+done_testing;

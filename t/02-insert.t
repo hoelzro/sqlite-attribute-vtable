@@ -7,8 +7,6 @@ use SQLite::TestUtils;
 
 check_deps;
 
-plan tests => 1;
-
 my $ok;
 my $dbh = create_dbh;
 
@@ -31,3 +29,5 @@ INSERT_DATA: {
     ok($ok, 'inserting data into an attribute table should succeed')
         or diag($dbh->errstr);
 }
+
+done_testing;

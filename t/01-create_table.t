@@ -7,8 +7,6 @@ use SQLite::TestUtils;
 
 check_deps;
 
-plan tests => 4;
-
 sub check_tables {
     my ( $dbh ) = @_;
 
@@ -54,3 +52,5 @@ END_SQL
 }
 
 $dbh->disconnect;
+
+done_testing;
