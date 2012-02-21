@@ -71,7 +71,7 @@ sub create_dbh {
         PrintError => 0,
     });
 
-    $dbh->sqlite_enable_load_extension(1);
+    $dbh->func(1, 'sqlite_enable_load_extension');
 
     unless($options{'no_load'}) {
         $dbh->do(q{SELECT load_extension('./attributes.so', 'sql_attr_init')});
