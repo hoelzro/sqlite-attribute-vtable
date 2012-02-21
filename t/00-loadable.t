@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use lib 't/lib';
 
-use Test::More;
+use Test::More tests => 1;
 use SQLite::TestUtils;
 
 check_deps;
@@ -18,5 +18,3 @@ my $ok = do {
 ok($ok, 'attribute extension should successfully load') or diag($dbh->errstr);
 
 $dbh->disconnect;
-
-done_testing;

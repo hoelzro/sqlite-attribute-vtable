@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use lib 't/lib';
 
-use Test::More;
+use Test::More tests => 4;
 use SQLite::TestUtils;
 
 check_deps;
@@ -52,5 +52,3 @@ END_SQL
 }
 
 $dbh->disconnect;
-
-done_testing;

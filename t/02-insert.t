@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use lib 't/lib';
 
-use Test::More;
+use Test::More tests => 1;
 use SQLite::TestUtils;
 
 check_deps;
@@ -29,5 +29,3 @@ INSERT_DATA: {
     ok($ok, 'inserting data into an attribute table should succeed')
         or diag($dbh->errstr);
 }
-
-done_testing;

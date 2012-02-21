@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use lib 't/lib';
 
-use Test::More;
+use Test::More tests => 19;
 use SQLite::TestUtils;
 
 check_deps;
@@ -299,7 +299,4 @@ UPDATE_TEST: {
             },
         }],
     );
-
 }
-
-done_testing;

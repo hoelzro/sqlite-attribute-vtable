@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use lib 't/lib';
 
-use Test::More;
+use Test::More tests => 2;
 use SQLite::TestUtils;
 
 check_deps;
@@ -24,5 +24,3 @@ my $ok = insert_rows $dbh, 'attributes', ({
 
 ok !$ok, 'inserting duplicate attributes should fail';
 like $dbh->errstr, qr/duplicate attributes are forbidden/;
-
-done_testing;

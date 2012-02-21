@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use lib 't/lib';
 
-use Test::More;
+use Test::More tests => 3;
 use SQLite::TestUtils;
 
 check_deps;
@@ -49,5 +49,3 @@ SELECT_DATA: {
         ok !defined($row);
     };
 }
-
-done_testing;

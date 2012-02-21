@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use lib 't/lib';
 
-use Test::More;
+use Test::More tests => 7;
 use SQLite::TestUtils;
 
 check_deps;
@@ -136,5 +136,3 @@ CHECK_NULL_QUERY: {
         error => qr/query operand must not be NULL/,
     );
 }
-
-done_testing;

@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use lib 't/lib';
 
-use Test::More;
+use Test::More tests => 5;
 use SQLite::TestUtils;
 
 check_deps;
@@ -51,5 +51,3 @@ TEXT_ID: {
 
     ok !$ok, q{updating a row's id to a string should fail};
 }
-
-done_testing;
