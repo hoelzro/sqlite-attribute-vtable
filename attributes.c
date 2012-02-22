@@ -166,7 +166,7 @@ static char *_allocate_sequence_schema_sql(const char *database_name,
 static char *_allocate_attribute_schema_sql(const char *database_name,
     const char *table_name)
 {
-    return sqlite3_mprintf( ATTR_SCHEMA_TMPL, database_name, table_name );
+    return sqlite3_mprintf( ATTR_SCHEMA_TMPL, database_name, table_name, table_name );
 }
 
 static char *_allocate_attribute_index_sql(const char *database_name,
